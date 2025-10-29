@@ -4,11 +4,6 @@ on:
     branches: [main]
 
 jobs:
-  call:
-    runs-on: [self-hosted, Linux, X64, trusted, docker]
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - name: Invoke reusable workflow in super-repo
-        uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
+  jobs:
+    call-super:
+      uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
