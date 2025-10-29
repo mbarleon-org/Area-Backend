@@ -12,4 +12,3 @@ jobs:
     steps:
       - name: Invoke reusable workflow in super-repo
         uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
-        secrets: inherit
