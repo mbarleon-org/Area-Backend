@@ -4,6 +4,5 @@ on:
     branches: [main]
 
 jobs:
-  jobs:
-    call-super:
-      uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
+  call-super:
+    uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
