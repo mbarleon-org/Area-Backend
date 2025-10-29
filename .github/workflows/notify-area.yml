@@ -4,18 +4,12 @@ on:
     branches: [main]
 
 jobs:
-  ping:
+  call:
     runs-on: [self-hosted, Linux, X64, trusted, docker]
     permissions:
       contents: read
       actions: read
-    env:
-      SUPER_REPO: mbarleon-org/Area
     steps:
-      - name: Dispatch event to super-repo
-        run: |
-          curl -s -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ github.token }}" \
-            https://api.github.com/repos/$SUPER_REPO/dispatches \
-            -d "{\"event_type\":\"submodule-updated\",\"client_payload\":{\"repo\":\"${{ github.repository }}\",\"sha\":\"${{ github.sha }}\"}}"
+      - name: Invoke reusable workflow in super-repo
+        uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
+        secrets: inherit
