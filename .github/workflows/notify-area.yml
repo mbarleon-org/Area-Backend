@@ -5,5 +5,5 @@ on:
 
 jobs:
   call-super:
-    uses: mbarleon-org/Area/.github/workflows/update-submodules-and-tag.yml@main
+    uses: mbarleon-org/Area/.github/workflows/update-submodules.yml@staging
     secrets: inherit
