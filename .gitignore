@@ -48,3 +48,5 @@ temp/
 .DS_Store
 !CODEOWNERS
 !Dockerfile
+dist/
+node_modules/
