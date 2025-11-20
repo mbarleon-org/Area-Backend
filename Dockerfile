@@ -1,14 +1,15 @@
-FROM golang:1.25.3 AS builder
-WORKDIR /src
-
-COPY go.mod ./
-RUN go env -w GOPROXY=https://proxy.golang.org,direct
-
+FROM node:25-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install --no-audit --prefer-offline || npm install
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /app/area-backend ./src
+RUN npm run build
 
-FROM scratch
-COPY --from=builder /app/area-backend /area-backend
-
-EXPOSE 8080
-ENTRYPOINT ["/area-backend"]
+FROM node:25-alpine
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
+RUN npm install -g dotenv-cli
+EXPOSE 3000
+CMD ["sh", "-c", "dotenv -e .env -- node dist/index.js"]
