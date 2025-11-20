@@ -6,6 +6,16 @@ COPY . .
 RUN npm run build
 
 FROM node:25-alpine
+ARG BUILD_DATE=unknown
+ARG VCS_REF=unknown
+
+LABEL org.opencontainers.image.title="area-backend" \
+   org.opencontainers.image.description="Area project backend" \
+   org.opencontainers.image.source="https://github.com/mbarleon-org/Area-Backend" \
+   org.opencontainers.image.url="https://github.com/mbarleon-org/Area-Backend" \
+   org.opencontainers.image.created="${BUILD_DATE}" \
+   org.opencontainers.image.revision="${VCS_REF}"
+
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json

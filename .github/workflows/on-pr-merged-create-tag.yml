@@ -82,7 +82,7 @@ jobs:
       - name: Compute image tags
         id: compute_tags
         env:
-          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/area-frontend
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/area-backend
           REF_NAME: ${{ steps.create_tag.outputs.TAG }}
         run: |
           echo "TAGS<<EOF" >> "$GITHUB_OUTPUT"
