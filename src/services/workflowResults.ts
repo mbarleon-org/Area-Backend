@@ -87,3 +87,30 @@ export async function recordWorkflowResult(job: RunnerJobLike, payload: RunnerCa
     const base = buildResultBase(job, payload, wf);
     return persistResult(repo, existing, base, job.jobId);
 }
+
+/**
+ * Poll for a persisted WorkflowResult associated with a runner job until it reaches
+ * a terminal state (`succeeded` or `failed`) or the timeout elapses.
+ *
+ * @param {string} jobId - runner job id to wait for
+ * @param {number} [timeoutMs=15000] - total time to wait in milliseconds
+ * @param {number} [pollIntervalMs=200] - interval between polls in milliseconds
+ * @returns {Promise<any|null>} the WorkflowResult entity when terminal, or null on timeout
+ */
+export async function waitForJobResult(jobId: string, timeoutMs = 15000, pollIntervalMs = 200): Promise<any | null> {
+    const stopAt = Date.now() + timeoutMs;
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowResult);
+
+    while (Date.now() < stopAt) {
+        const existing = await repo.findOne({ where: { jobId } });
+        if (existing && existing.status && existing.status !== 'queued' && existing.status !== 'running') {
+            return existing;
+        }
+        if (existing && existing.status === 'failed') {
+            return existing;
+        }
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+    return null;
+}
