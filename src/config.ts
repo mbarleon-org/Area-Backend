@@ -34,7 +34,7 @@ export interface AppConfig {
     DB_PASSWORD: string;
     DB_NAME: string;
     DATABASE_URL: string;
-    AREA_ENCRYPTION_KEY: string;
+    AREA_ENCRYPTION_KEY?: string;
     LEGACY_WORKFLOWS_DIR: string;
     LEGACY_CREDENTIALS_DIR: string;
 }
