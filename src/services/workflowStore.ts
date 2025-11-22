@@ -13,7 +13,12 @@ export interface StoredWorkflow {
     actions?: any[];
     [key: string]: any;
 }
-
+/**
+ * Map a `WorkflowEntity` (DB) to the `StoredWorkflow` shape used by services.
+ *
+ * @param {WorkflowEntity} entity - database workflow entity
+ * @returns {StoredWorkflow} normalized workflow object
+ */
 function mapEntityToWorkflow(entity: WorkflowEntity): StoredWorkflow {
     return {
         id: entity.id,
@@ -26,6 +31,11 @@ function mapEntityToWorkflow(entity: WorkflowEntity): StoredWorkflow {
     };
 }
 
+/**
+ * List all persisted workflows from the database.
+ *
+ * @returns {Promise<StoredWorkflow[]>} array of stored workflows
+ */
 export async function listWorkflows(): Promise<StoredWorkflow[]> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
@@ -33,6 +43,12 @@ export async function listWorkflows(): Promise<StoredWorkflow[]> {
     return entities.map(mapEntityToWorkflow);
 }
 
+/**
+ * Load a workflow by id from the database.
+ *
+ * @param {string} id - workflow id to load
+ * @returns {Promise<StoredWorkflow|null>} stored workflow or null when not found
+ */
 export async function loadWorkflow(id: string): Promise<StoredWorkflow | null> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
@@ -40,6 +56,12 @@ export async function loadWorkflow(id: string): Promise<StoredWorkflow | null> {
     return entity ? mapEntityToWorkflow(entity) : null;
 }
 
+/**
+ * Persist a workflow definition into the database.
+ *
+ * @param {StoredWorkflow} def - workflow definition to persist
+ * @returns {Promise<void>} resolves when saved
+ */
 export async function persistWorkflowDefinition(def: StoredWorkflow): Promise<void> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
@@ -55,6 +77,12 @@ export async function persistWorkflowDefinition(def: StoredWorkflow): Promise<vo
     await repo.save(entity);
 }
 
+/**
+ * Save a workflow definition (create or update) and return the stored representation.
+ *
+ * @param {StoredWorkflow} def - workflow definition to save (must include `id`)
+ * @returns {Promise<StoredWorkflow>} saved workflow
+ */
 export async function saveWorkflow(def: StoredWorkflow): Promise<StoredWorkflow> {
     if (!def?.id) {
         throw new Error('workflow id is required');
@@ -64,6 +92,13 @@ export async function saveWorkflow(def: StoredWorkflow): Promise<StoredWorkflow>
     return mapEntityToWorkflow(await getDataSource().getRepository(WorkflowEntity).findOneOrFail({ where: { id: def.id } }));
 }
 
+/**
+ * Enable or disable a workflow by id.
+ *
+ * @param {string} id - workflow id
+ * @param {boolean} enabled - desired enabled state
+ * @returns {Promise<StoredWorkflow|null>} updated workflow or null when not found
+ */
 export async function setWorkflowEnabled(id: string, enabled: boolean): Promise<StoredWorkflow | null> {
     const existing = await loadWorkflow(id);
     if (!existing) {
@@ -73,6 +108,12 @@ export async function setWorkflowEnabled(id: string, enabled: boolean): Promise<
     return saveWorkflow(existing);
 }
 
+/**
+ * Extract credential ids referenced by workflow actions. Returns unique ids.
+ *
+ * @param {StoredWorkflow} workflow - workflow to scan for credential references
+ * @returns {string[]} array of credential ids (strings)
+ */
 export function extractCredentialIds(workflow: StoredWorkflow): string[] {
     const out = new Set<string>();
     for (const action of workflow.actions || []) {
@@ -89,12 +130,25 @@ export function extractCredentialIds(workflow: StoredWorkflow): string[] {
     return Array.from(out);
 }
 
-function stripJsonComments(input: string) {
+/**
+ * Remove JavaScript-style comments from a JSONC string.
+ *
+ * @param {string} input - raw JSONC text
+ * @returns {string} text with comments removed
+ */
+function stripJsonComments(input: string): string {
     return input
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '');
 }
 
+/**
+ * Read and parse a workflow file (JSON or JSONC). Returns `null` when the parsed object
+ * does not contain an `id` property.
+ *
+ * @param {string} fp - file path to read
+ * @returns {Promise<StoredWorkflow|null>} parsed workflow or null
+ */
 async function readWorkflowFile(fp: string): Promise<StoredWorkflow | null> {
     const raw = await fs.promises.readFile(fp, 'utf8');
     const parsed = JSON.parse(stripJsonComments(raw));
@@ -104,6 +158,25 @@ async function readWorkflowFile(fp: string): Promise<StoredWorkflow | null> {
     return parsed as StoredWorkflow;
 }
 
+/**
+ * Process a single workflow file: read, validate (must contain id) and persist.
+ *
+ * @param {string} fp - absolute file path to process
+ * @returns {Promise<boolean>} true when a workflow was persisted, false when skipped
+ */
+async function processWorkflowFile(fp: string): Promise<boolean> {
+    const wf = await readWorkflowFile(fp);
+    if (!wf) return false;
+    await persistWorkflowDefinition({ enabled: wf.enabled !== false, ...wf });
+    return true;
+}
+
+/**
+ * Seed workflows from a directory by persisting any workflow JSON/JSONC files found.
+ *
+ * @param {string} [dir=path.resolve(process.cwd(),'workflows')] - directory to scan
+ * @returns {Promise<number>} number of workflows imported
+ */
 export async function seedWorkflowsFromDir(dir: string = path.resolve(process.cwd(), 'workflows')): Promise<number> {
     if (!fs.existsSync(dir)) return 0;
     const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') || f.endsWith('.jsonc'));
@@ -111,12 +184,8 @@ export async function seedWorkflowsFromDir(dir: string = path.resolve(process.cw
     for (const file of files) {
         const fp = path.join(dir, file);
         try {
-            const wf = await readWorkflowFile(fp);
-            if (!wf) {
-                continue;
-            }
-            await persistWorkflowDefinition({ enabled: wf.enabled !== false, ...wf });
-            imported += 1;
+            const ok = await processWorkflowFile(fp);
+            if (ok) imported += 1;
         } catch (err) {
             console.error('[seedWorkflowsFromDir] failed to import', file, err);
         }

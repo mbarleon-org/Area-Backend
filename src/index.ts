@@ -8,26 +8,72 @@ import { importLegacyFiles } from './legacy/importAll';
 import { initDataSource } from './services/dataSource.js';
 import { registerWorkflows } from './api/workflowRegistration.js';
 
-Object.values(CONFIG).forEach(element => {
-    if (element === null) {
-        throw new Error("Fatal Error: All elements in config are not set.");
-    }
-});
+/**
+ * Validate the runtime configuration.
+ *
+ * @returns {void}
+ * @throws {Error} if any config entry is explicitly `null`.
+ */
+function validateConfig(): void {
+    Object.values(CONFIG).forEach(element => {
+        if (element === null) {
+            throw new Error('Fatal Error: All elements in config are not set.');
+        }
+    });
+}
 
-async function bootstrap() {
+/**
+ * Create and configure the express application.
+ *
+ * @returns {express.Express} configured express app
+ */
+function createApp(): express.Express {
+    const app = express();
+    app.use(express.json());
+    app.use(cors());
+    return app;
+}
+
+/**
+ * Mount application routes under the configured `BASE_PATH`.
+ *
+ * @param {express.Express} app - the express application
+ * @returns {void}
+ */
+function mountRoutes(app: express.Express): void {
+    routes.forEach(route => {
+        app.use(CONFIG.BASE_PATH, route);
+    });
+}
+
+/**
+ * Start the HTTP server.
+ *
+ * @param {express.Express} app - the express application
+ * @returns {void}
+ */
+function startServer(app: express.Express): void {
+    app.listen(CONFIG.LISTEN_ADDRESS, () => {
+        console.log('Server is running on port', CONFIG.LISTEN_ADDRESS);
+    });
+}
+
+/**
+ * Bootstrap the application: init DB, import legacy files, register workflows
+ * and start the HTTP server.
+ *
+ * @returns {Promise<void>} resolves when bootstrap completes or rejects on fatal error
+ */
+async function bootstrap(): Promise<void> {
+    validateConfig();
+
     await initDataSource();
 
     await importLegacyFiles();
 
-    const app = express();
+    const app = createApp();
 
-    app.use(express.json());
-
-    app.use(cors());
-
-    routes.forEach(route => {
-        app.use(CONFIG.BASE_PATH, route);
-    });
+    mountRoutes(app);
 
     try {
         await registerWorkflows(app, {});
@@ -36,9 +82,7 @@ async function bootstrap() {
         console.error('[startup] failed to register workflows', err);
     }
 
-    app.listen(CONFIG.LISTEN_ADDRESS, () => {
-        console.log('Server is running on port', CONFIG.LISTEN_ADDRESS);
-    });
+    startServer(app);
 }
 
 bootstrap().catch(err => {
