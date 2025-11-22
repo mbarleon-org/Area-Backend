@@ -8,16 +8,19 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "npx tsc",
-    "test": "dotenv -e .env -- npx ts-node src/index.ts",
-    "start": "dotenv -e .env -- node dist/index.js"
+    "test": "npx ts-node src/index.ts",
+    "start": "node dist/src/index.js",
+    "bootstrap:kind": "bash ./scripts/bootstrap-kind.sh",
+    "cleanup:k8s": "bash ./scripts/cleanup-k8s.sh -y",
+    "build-image": "docker build -t area-backend:dev .",
+    "reload-stack": "npm run build-image && npm run cleanup:k8s && npm run bootstrap:kind"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
+    "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "imapflow": "^1.1.1",
     "ioredis": "^5.8.2",
-    "mysql2": "^3.15.3",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "pg": "^8.16.3",

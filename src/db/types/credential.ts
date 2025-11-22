@@ -1,6 +1,6 @@
 import {
     Entity,
-    PrimaryGeneratedColumn,
+    PrimaryColumn,
     Column,
     ManyToMany,
     JoinTable
@@ -10,11 +10,20 @@ import { Team } from "./team"
 
 @Entity()
 export class Credential {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryColumn()
+    id: string;
 
     @Column()
     name: string;
+
+    @Column()
+    type: string;
+
+    @Column()
+    version: string;
+
+    @Column({ nullable: true })
+    description?: string;
 
     @Column("jsonb")
     credential: any;
