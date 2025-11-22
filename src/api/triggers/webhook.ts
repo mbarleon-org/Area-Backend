@@ -1,5 +1,6 @@
 import * as express from 'express';
 import { dispatchWorkflow } from '../../services/workflowRunner.js';
+import { waitForJobResult } from '../../services/workflowResults.js';
 
 export const mountsRouter = true;
 
@@ -99,6 +100,32 @@ function buildHandler(params: {
             });
 
             if (runResult.queued) {
+                // If the trigger requested a return_value, wait for the runner to finish
+                // and return the requested value. Otherwise respond with 202 + jobId.
+                if (trig && trig.return_value) {
+                    const jobId = runResult.jobId;
+                    try {
+                        const result = await waitForJobResult(jobId);
+                        if (!result) {
+                            // timed out waiting for result
+                            return res.status(202).json({ ok: true, jobId });
+                        }
+                        if (result.status === 'failed') {
+                            return res.status(500).json({ error: result.errorMessage || 'runner_failed' });
+                        }
+                        const outputs = result.results || {};
+                        const ret = getReturnResponse(outputs, trig, actionsList);
+                        if (ret.handled) {
+                            if (ret.status) return res.status(ret.status).json(ret.body);
+                            return res.json(ret.body);
+                        }
+                        return res.json({ ok: true, outputs });
+                    } catch (e: any) {
+                        // In case of unexpected error while waiting, fall back to queued response
+                        console.error('error while waiting for runner result', e);
+                        return res.status(202).json({ ok: true, jobId });
+                    }
+                }
                 return res.status(202).json({ ok: true, jobId: runResult.jobId });
             }
 
