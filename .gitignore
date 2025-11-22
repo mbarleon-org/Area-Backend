@@ -50,3 +50,6 @@ temp/
 !Dockerfile
 dist/
 node_modules/
+/credentials/
+/workflows/
+/worker/
