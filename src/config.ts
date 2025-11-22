@@ -34,6 +34,7 @@ export interface AppConfig {
     DB_PASSWORD: string;
     DB_NAME: string;
     DATABASE_URL: string;
+    AREA_ENCRYPTION_KEY: string;
     LEGACY_WORKFLOWS_DIR: string;
     LEGACY_CREDENTIALS_DIR: string;
 }
@@ -45,7 +46,7 @@ export interface AppConfig {
  */
 function buildConfig(): AppConfig {
     return {
-        BASE_PATH: process.env.BASE_PATH || '/api',
+        BASE_PATH: '/api', // enforce /api as of now
         PUBLIC_URL: process.env.PUBLIC_URL || process.env.BACKEND_PUBLIC_URL || '',
         LISTEN_ADDRESS: parseInt(process.env.BACKEND_ADDRESS || '', 10) || 3000,
         USE_RUNNERS: process.env.USE_RUNNERS !== 'false',
@@ -60,7 +61,8 @@ function buildConfig(): AppConfig {
         DB_NAME: process.env.DB_NAME || process.env.POSTGRES_DB || 'area',
         DATABASE_URL: process.env.DATABASE_URL || '',
         LEGACY_WORKFLOWS_DIR: process.env.LEGACY_WORKFLOWS_DIR || '',
-        LEGACY_CREDENTIALS_DIR: process.env.LEGACY_CREDENTIALS_DIR || ''
+        LEGACY_CREDENTIALS_DIR: process.env.LEGACY_CREDENTIALS_DIR || '',
+        AREA_ENCRYPTION_KEY: process.env.AREA_ENCRYPTION_KEY
     };
 }
 

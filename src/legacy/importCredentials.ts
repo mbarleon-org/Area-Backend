@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CONFIG } from '../config';
 import { readJsoncFile } from './readFile';
+import { encryptObject } from '../services/crypto.js';
 import { getDataSource } from '../services/dataSource';
 import { Credential as CredentialEntity } from '../db/types/credential';
 
@@ -51,7 +52,7 @@ async function processCredentialFile(filePath: string, repo: any): Promise<void>
             version: cred.version || '1.0.0',
             type: cred.type,
             description: cred.description || null,
-            credential: cred.credential || {},
+            credential: encryptObject(cred.credential || {}),
             owners: cred.owners || [],
             ownerTeams: cred.ownerTeams || [],
             users: cred.users || [],
