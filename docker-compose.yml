@@ -72,10 +72,13 @@ services:
       KUBECTL_CMD: kubectl --kubeconfig=/root/.kube/config
       KUBECONFIG: /root/.kube/config
     volumes:
-        - ~/.kube/config.docker:/root/.kube/config:ro
+      - ~/.kube/config.docker:/root/.kube/config:ro
     networks:
       - area-dev
+      - kind
 
 networks:
   area-dev:
     name: area-dev
+  kind:
+    external: true
