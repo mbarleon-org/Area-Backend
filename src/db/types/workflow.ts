@@ -1,6 +1,6 @@
 import {
     Entity,
-    PrimaryGeneratedColumn,
+    PrimaryColumn,
     Column,
     ManyToMany,
     JoinTable,
@@ -12,14 +12,17 @@ import { WorkflowResult } from "./workflowResult";
 
 @Entity()
 export class Workflow {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn()
+  id: string;
 
   @Column()
   name: string;
 
   @Column()
-  description: string;
+  version: string;
+
+  @Column({ nullable: true })
+  description?: string;
 
   @Column({ default: false })
   enabled: boolean;
