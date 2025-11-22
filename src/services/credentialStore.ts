@@ -1,4 +1,5 @@
 import { In } from 'typeorm';
+import { decryptObject } from './crypto.js';
 import { Credential } from '../db/types/credential.js';
 import { getDataSource, initDataSource } from './dataSource.js';
 
@@ -29,7 +30,7 @@ function mapEntityToStoredCredential(entity: any): StoredCredential {
     return {
         id: entity.id,
         type: entity.type,
-        data: entity.credential,
+        data: decryptObject(entity.credential),
         name: entity.name
     };
 }
