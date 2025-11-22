@@ -1,10 +1,12 @@
 import 'reflect-metadata';
+import 'dotenv/config';
 import * as cors from 'cors';
+import { CONFIG } from './config';
 import * as express from 'express';
 import routes from './routeList.js';
-import { CONFIG } from './config.js';
-
-require('dotenv').config()
+import { importLegacyFiles } from './legacy/importAll';
+import { initDataSource } from './services/dataSource.js';
+import { registerWorkflows } from './api/workflowRegistration.js';
 
 Object.values(CONFIG).forEach(element => {
     if (element === null) {
@@ -12,16 +14,34 @@ Object.values(CONFIG).forEach(element => {
     }
 });
 
-const app = express();
+async function bootstrap() {
+    await initDataSource();
 
-app.use(cors());
+    await importLegacyFiles();
 
-app.use(express.json());
+    const app = express();
 
-routes.forEach(route => {
-    app.use(CONFIG.BASE_PATH, route);
-});
+    app.use(express.json());
 
-app.listen(CONFIG.LISTEN_ADDRESS, () => {
-    console.log('Server is running on port', CONFIG.LISTEN_ADDRESS);
+    app.use(cors());
+
+    routes.forEach(route => {
+        app.use(CONFIG.BASE_PATH, route);
+    });
+
+    try {
+        await registerWorkflows(app, {});
+        console.log('[startup] workflows registered');
+    } catch (err) {
+        console.error('[startup] failed to register workflows', err);
+    }
+
+    app.listen(CONFIG.LISTEN_ADDRESS, () => {
+        console.log('Server is running on port', CONFIG.LISTEN_ADDRESS);
+    });
+}
+
+bootstrap().catch(err => {
+    console.error('Fatal startup error', err);
+    process.exit(1);
 });
