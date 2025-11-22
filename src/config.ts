@@ -1,24 +1,67 @@
-export const CONFIG = {
-    BASE_PATH: process.env.BASE_PATH || '/api',
-    PUBLIC_URL: process.env.PUBLIC_URL || process.env.BACKEND_PUBLIC_URL || '',
+/**
+ * Lightweight configuration shape for the application.
+ *
+ * @typedef {Object} AppConfig
+ * @property {string} BASE_PATH - base API path
+ * @property {string} PUBLIC_URL - public URL of the backend
+ * @property {number} LISTEN_ADDRESS - numeric listen port/address
+ * @property {boolean} USE_RUNNERS - whether to use external runners
+ * @property {string} RUNNER_SHARED_SECRET - shared secret for runners
+ * @property {string} RUNNER_CALLBACK_PATH - callback path for runners
+ * @property {string} REDIS_URL - redis connection URL
+ * @property {string} WORKFLOW_STREAM - redis stream name for workflow jobs
+ * @property {string} DB_HOST - database host
+ * @property {number} DB_PORT - database port
+ * @property {string} DB_USER - database username
+ * @property {string} DB_PASSWORD - database password
+ * @property {string} DB_NAME - database name
+ * @property {string} DATABASE_URL - full database URL (optional)
+ * @property {string} LEGACY_WORKFLOWS_DIR - optional legacy workflows dir
+ * @property {string} LEGACY_CREDENTIALS_DIR - optional legacy credentials dir
+ */
+export interface AppConfig {
+    BASE_PATH: string;
+    PUBLIC_URL: string;
+    LISTEN_ADDRESS: number;
+    USE_RUNNERS: boolean;
+    RUNNER_SHARED_SECRET: string;
+    RUNNER_CALLBACK_PATH: string;
+    REDIS_URL: string;
+    WORKFLOW_STREAM: string;
+    DB_HOST: string;
+    DB_PORT: number;
+    DB_USER: string;
+    DB_PASSWORD: string;
+    DB_NAME: string;
+    DATABASE_URL: string;
+    LEGACY_WORKFLOWS_DIR: string;
+    LEGACY_CREDENTIALS_DIR: string;
+}
 
-    LISTEN_ADDRESS: parseInt(process.env.BACKEND_ADDRESS) || 3000,
+/**
+ * Build the runtime configuration from environment variables.
+ *
+ * @returns {AppConfig} resolved configuration object
+ */
+function buildConfig(): AppConfig {
+    return {
+        BASE_PATH: process.env.BASE_PATH || '/api',
+        PUBLIC_URL: process.env.PUBLIC_URL || process.env.BACKEND_PUBLIC_URL || '',
+        LISTEN_ADDRESS: parseInt(process.env.BACKEND_ADDRESS || '', 10) || 3000,
+        USE_RUNNERS: process.env.USE_RUNNERS !== 'false',
+        RUNNER_SHARED_SECRET: process.env.RUNNER_SHARED_SECRET || '',
+        RUNNER_CALLBACK_PATH: process.env.RUNNER_CALLBACK_PATH || '/api/runner/callback',
+        REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+        WORKFLOW_STREAM: process.env.WORKFLOW_STREAM || 'workflow_jobs',
+        DB_HOST: process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost',
+        DB_PORT: parseInt(process.env.DB_PORT || process.env.POSTGRES_PORT || '5432', 10),
+        DB_USER: process.env.DB_USER || process.env.POSTGRES_USER || 'postgres',
+        DB_PASSWORD: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || '',
+        DB_NAME: process.env.DB_NAME || process.env.POSTGRES_DB || 'area',
+        DATABASE_URL: process.env.DATABASE_URL || '',
+        LEGACY_WORKFLOWS_DIR: process.env.LEGACY_WORKFLOWS_DIR || '',
+        LEGACY_CREDENTIALS_DIR: process.env.LEGACY_CREDENTIALS_DIR || ''
+    };
+}
 
-    USE_RUNNERS: process.env.USE_RUNNERS !== 'false',
-
-    RUNNER_SHARED_SECRET: process.env.RUNNER_SHARED_SECRET || '',
-    RUNNER_CALLBACK_PATH: process.env.RUNNER_CALLBACK_PATH || '/api/runner/callback',
-
-    REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
-    WORKFLOW_STREAM: process.env.WORKFLOW_STREAM || 'workflow_jobs',
-
-    DB_HOST: process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost',
-    DB_PORT: parseInt(process.env.DB_PORT || process.env.POSTGRES_PORT || '5432', 10),
-    DB_USER: process.env.DB_USER || process.env.POSTGRES_USER || 'postgres',
-    DB_PASSWORD: process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || '',
-    DB_NAME: process.env.DB_NAME || process.env.POSTGRES_DB || 'area',
-    DATABASE_URL: process.env.DATABASE_URL || '',
-
-    LEGACY_WORKFLOWS_DIR: process.env.LEGACY_WORKFLOWS_DIR || '',
-    LEGACY_CREDENTIALS_DIR: process.env.LEGACY_CREDENTIALS_DIR || ''
-};
+export const CONFIG: AppConfig = buildConfig();

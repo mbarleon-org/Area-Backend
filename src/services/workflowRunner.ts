@@ -26,8 +26,44 @@ function resolveCallbackBase(req?: express.Request | null): string | undefined {
     }
     return `http://localhost:${CONFIG.LISTEN_ADDRESS}`;
 }
+/**
+ * Create a credential lookup function for a workflow. The returned function resolves
+ * credential ids to their in-memory representations fetched from the credential store.
+ *
+ * @param {any} wf - workflow object to extract credential ids from
+ * @returns {Promise<(credentialId: string) => Promise<any>|null>} async function resolving credential id -> credential object
+ */
+async function buildCredentialGetter(wf: any): Promise<(credentialId: string) => Promise<any>> {
+    const credIds = extractCredentialIds(wf || {});
+    const credsMap: Record<string, any> = Object.create(null);
+    if (credIds && credIds.length > 0) {
+        const fetched = await getCredentialsByIds(credIds);
+        for (const c of Object.values(fetched)) {
+            const id = String((c as any).id);
+            credsMap[id] = { type: (c as any).type, data: (c as any).data || (c as any).credential, name: (c as any).name };
+        }
+    }
+    return async (credentialId: string) => {
+        if (credsMap[String(credentialId)]) {
+            return credsMap[String(credentialId)];
+        }
+        const asNum = Number(credentialId);
+        if (!Number.isNaN(asNum) && credsMap[String(asNum)]) {
+            return credsMap[String(asNum)];
+        }
+        return null;
+    };
+}
 
-export async function dispatchWorkflow(ctx: WorkflowRunContext) {
+/**
+ * Dispatch a workflow for execution. When runners are enabled this will enqueue the job
+ * to an external runner and return `{ queued: true, jobId }`. Otherwise it will execute
+ * actions locally and return `{ queued: false, outputs }`.
+ *
+ * @param {WorkflowRunContext} ctx - workflow execution context
+ * @returns {Promise<any>} execution result indicating queued status or outputs
+ */
+export async function dispatchWorkflow(ctx: WorkflowRunContext): Promise<any> {
     if (CONFIG.USE_RUNNERS) {
         requireRunnerSecret();
         const job = await enqueueRunnerJob({
@@ -44,28 +80,10 @@ export async function dispatchWorkflow(ctx: WorkflowRunContext) {
 
     const jobRef = { jobId: `local-${newJobId()}`, workflowId: ctx.wf.id, workflowVersion: ctx.wf.version };
     try {
-        const execOptions = Object.assign({}, ctx.options || {});
+        const execOptions: Record<string, any> = Object.assign({}, ctx.options || {});
         if (typeof execOptions.getCredentialById !== 'function') {
             try {
-                const credIds = extractCredentialIds(ctx.wf || {});
-                const credsMap: Record<string, any> = Object.create(null);
-                if (credIds && credIds.length > 0) {
-                    const fetched = await getCredentialsByIds(credIds);
-                    for (const c of Object.values(fetched)) {
-                        const id = String((c as any).id);
-                        credsMap[id] = { type: (c as any).type, data: (c as any).data || (c as any).credential, name: (c as any).name };
-                    }
-                }
-                execOptions.getCredentialById = async (credentialId: string) => {
-                    if (credsMap[String(credentialId)]) {
-                        return credsMap[String(credentialId)];
-                    }
-                    const asNum = Number(credentialId);
-                    if (!Number.isNaN(asNum) && credsMap[String(asNum)]) {
-                        return credsMap[String(asNum)];
-                    }
-                    return null;
-                };
+                execOptions.getCredentialById = await buildCredentialGetter(ctx.wf);
             } catch (e) {
                 execOptions.getCredentialById = async (_id: string) => null;
             }

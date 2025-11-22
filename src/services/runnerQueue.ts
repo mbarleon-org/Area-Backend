@@ -15,6 +15,13 @@ export interface QueueWorkflowJobOptions {
     callbackBaseUrl?: string;
 }
 
+/**
+ * Build the absolute callback URL used by runners to post job status updates.
+ *
+ * @param {string} [base] - Optional base URL override (falls back to `CONFIG.PUBLIC_URL`)
+ * @returns {string} fully-qualified callback URL
+ * @throws {Error} when neither `base` nor `CONFIG.PUBLIC_URL` is configured
+ */
 export function buildCallbackUrl(base?: string): string {
     const resolvedBase = base || CONFIG.PUBLIC_URL;
     if (!resolvedBase) {
@@ -30,15 +37,36 @@ export function newJobId(): string {
     return randomBytes(16).toString('hex');
 }
 
-export async function getRunnerJob(jobId: string): Promise<RunnerJob | null> {
+/**
+ * Helper: initialize datasource and return the RunnerJob repository.
+ *
+ * @returns {Promise<any>} repository for `RunnerJob` (TypeORM)
+ */
+async function getRunnerJobRepository(): Promise<any> {
     await initDataSource();
-    const repo = getDataSource().getRepository(RunnerJob);
+    return getDataSource().getRepository(RunnerJob);
+}
+
+/**
+ * Lookup a runner job by its jobId.
+ *
+ * @param {string} jobId - Job identifier
+ * @returns {Promise<RunnerJob|null>} the RunnerJob entity or `null` when not found
+ */
+export async function getRunnerJob(jobId: string): Promise<RunnerJob | null> {
+    const repo = await getRunnerJobRepository();
     return repo.findOne({ where: { jobId } });
 }
 
+/**
+ * Update an existing runner job with a partial patch.
+ *
+ * @param {string} jobId - Job identifier to update
+ * @param {Partial<RunnerJob>} patch - Partial fields to merge into the job
+ * @returns {Promise<RunnerJob|null>} updated job or `null` when not found
+ */
 export async function updateRunnerJob(jobId: string, patch: Partial<RunnerJob>): Promise<RunnerJob | null> {
-    await initDataSource();
-    const repo = getDataSource().getRepository(RunnerJob);
+    const repo = await getRunnerJobRepository();
     const existing = await repo.findOne({ where: { jobId } });
     if (!existing) {
         return null;
@@ -48,9 +76,14 @@ export async function updateRunnerJob(jobId: string, patch: Partial<RunnerJob>):
     return merged;
 }
 
+/**
+ * Create and persist a new RunnerJob entity.
+ *
+ * @param {QueueWorkflowJobOptions} opts - Options describing the workflow to queue
+ * @returns {Promise<RunnerJob>} the persisted RunnerJob
+ */
 export async function createRunnerJob(opts: QueueWorkflowJobOptions): Promise<RunnerJob> {
-    await initDataSource();
-    const repo = getDataSource().getRepository(RunnerJob);
+    const repo = await getRunnerJobRepository();
     const job = repo.create({
         jobId: newJobId(),
         workflowId: opts.workflowId,
@@ -68,7 +101,20 @@ export async function createRunnerJob(opts: QueueWorkflowJobOptions): Promise<Ru
 export async function enqueueRunnerJob(opts: QueueWorkflowJobOptions): Promise<RunnerJob> {
     const job = await createRunnerJob(opts);
     await ensureRedis();
-    const payload = {
+    const payload = buildQueuePayload(job);
+    await redis.xadd(CONFIG.WORKFLOW_STREAM, '*', 'job', JSON.stringify(payload));
+    await recordWorkflowResult(job, { status: 'queued' });
+    return job;
+}
+
+/**
+ * Build the payload that will be pushed to the workflow stream for runners.
+ *
+ * @param {RunnerJob} job - persisted RunnerJob entity
+ * @returns {Record<string, any>} payload object to JSON-serialize into the stream
+ */
+function buildQueuePayload(job: RunnerJob): Record<string, any> {
+    return {
         jobId: job.jobId,
         workflowId: job.workflowId,
         workflowVersion: job.workflowVersion,
@@ -77,7 +123,4 @@ export async function enqueueRunnerJob(opts: QueueWorkflowJobOptions): Promise<R
         callbackUrl: job.callbackUrl,
         callbackNonce: job.callbackNonce
     };
-    await redis.xadd(CONFIG.WORKFLOW_STREAM, '*', 'job', JSON.stringify(payload));
-    await recordWorkflowResult(job, { status: 'queued' });
-    return job;
 }
