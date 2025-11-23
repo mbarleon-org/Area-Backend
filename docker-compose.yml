@@ -47,33 +47,15 @@ services:
       LEGACY_CREDENTIALS_DIR: /app/legacy_credentials
       USE_RUNNERS: "true"
       AREA_ENCRYPTION_KEY: ${AREA_ENCRYPTION_KEY}
+      K8S_IMAGE: area-worker:dev
+      K8S_NAMESPACE: default
+      RUNNER_EPHEMERAL_K8S: "true"
     ports:
       - "3000:3000"
     volumes:
+      - ~/.kube/config.docker:/root/.kube/config:ro
       - ./workflows:/app/legacy_workflows:ro
       - ./credentials:/app/legacy_credentials:ro
-    networks:
-      - area-dev
-
-  runner:
-    image: area-worker:dev
-    container_name: area-runner
-    depends_on:
-      - backend
-      - redis
-    environment:
-      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET}
-      RUNNER_API_URL: http://backend:3000/api
-      REDIS_URL: redis://redis:6379
-      WORKFLOW_STREAM: workflow_jobs
-      WORKFLOW_CONSUMER_GROUP: workflow-runners
-      RUNNER_EPHEMERAL_KIND: "true"
-      KIND_IMAGE: area-worker:dev
-      KIND_NAMESPACE: default
-      KUBECTL_CMD: kubectl --kubeconfig=/root/.kube/config
-      KUBECONFIG: /root/.kube/config
-    volumes:
-      - ~/.kube/config.docker:/root/.kube/config:ro
     networks:
       - area-dev
       - kind

@@ -37,6 +37,9 @@ export interface AppConfig {
     AREA_ENCRYPTION_KEY?: string;
     LEGACY_WORKFLOWS_DIR: string;
     LEGACY_CREDENTIALS_DIR: string;
+    RUNNER_EPHEMERAL_K8S?: boolean;
+    K8S_NAMESPACE?: string;
+    K8S_IMAGE?: string;
 }
 
 /**
@@ -62,7 +65,10 @@ function buildConfig(): AppConfig {
         DATABASE_URL: process.env.DATABASE_URL || '',
         LEGACY_WORKFLOWS_DIR: process.env.LEGACY_WORKFLOWS_DIR || '',
         LEGACY_CREDENTIALS_DIR: process.env.LEGACY_CREDENTIALS_DIR || '',
-        AREA_ENCRYPTION_KEY: process.env.AREA_ENCRYPTION_KEY
+        AREA_ENCRYPTION_KEY: process.env.AREA_ENCRYPTION_KEY,
+        RUNNER_EPHEMERAL_K8S: (process.env.RUNNER_EPHEMERAL_K8S || process.env.K8S_SUBMITTER_ENABLED || process.env.ENABLE_K8S_SUBMITTER || 'false') === 'true',
+        K8S_NAMESPACE: process.env.K8S_NAMESPACE || process.env.K8S_SUBMITTER_NAMESPACE || 'default',
+        K8S_IMAGE: process.env.K8S_IMAGE || process.env.K8S_SUBMITTER_IMAGE || process.env.RUNNER_EPHEMERAL_IMAGE || 'ghcr.io/area/worker:latest'
     };
 }
 
