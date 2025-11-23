@@ -2,6 +2,7 @@ import { URL } from 'url';
 import { CONFIG } from '../config';
 import { randomBytes } from 'crypto';
 import { generateNonce } from './runnerAuth.js';
+import { submitK8sJob } from './k8sSubmitter.js';
 import { RunnerJob } from '../db/types/runnerJob.js';
 import { ensureRedis, redis } from './redisClient.js';
 import { recordWorkflowResult } from './workflowResults.js';
@@ -100,11 +101,44 @@ export async function createRunnerJob(opts: QueueWorkflowJobOptions): Promise<Ru
 
 export async function enqueueRunnerJob(opts: QueueWorkflowJobOptions): Promise<RunnerJob> {
     const job = await createRunnerJob(opts);
+    if (CONFIG.RUNNER_EPHEMERAL_K8S) {
+        const submitted = await trySubmitToK8s(job);
+        if (submitted) {
+            return job;
+        }
+    }
+
     await ensureRedis();
-    const payload = buildQueuePayload(job);
+    const payload: Record<string, any> = buildQueuePayload(job);
     await redis.xadd(CONFIG.WORKFLOW_STREAM, '*', 'job', JSON.stringify(payload));
     await recordWorkflowResult(job, { status: 'queued' });
     return job;
+}
+
+
+/**
+ * Try to submit a job to Kubernetes using the internal submitter.
+ * @param {RunnerJob} job - persisted RunnerJob entity
+ * @returns {Promise<boolean>} true when submission succeeded, false on error
+ */
+async function trySubmitToK8s(job: RunnerJob): Promise<boolean> {
+    try {
+        const created: any = await submitK8sJob({
+            jobId: job.jobId,
+            workflowId: job.workflowId,
+            workflowVersion: job.workflowVersion || undefined,
+            input: job.input,
+            callbackUrl: job.callbackUrl,
+            callbackNonce: job.callbackNonce,
+            modulesBase: null
+        });
+        await updateRunnerJob(job.jobId, { status: 'submitted', externalId: created?.metadata?.name || null } as any);
+        await recordWorkflowResult(job, { status: 'queued' });
+        return true;
+    } catch (err: any) {
+        console.error('[backend:k8s] submit failed, falling back to redis enqueue', err && err.body ? err.body : err && err.message ? err.message : err);
+        return false;
+    }
 }
 
 /**

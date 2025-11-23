@@ -16,6 +16,7 @@
     "reload-stack": "npm run build-image && npm run cleanup:k8s && npm run bootstrap:kind"
   },
   "dependencies": {
+    "@kubernetes/client-node": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
