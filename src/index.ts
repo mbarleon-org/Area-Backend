@@ -12,12 +12,12 @@ import { registerWorkflows } from './api/workflowRegistration.js';
  * Validate the runtime configuration.
  *
  * @returns {void}
- * @throws {Error} if any config entry is explicitly `null`.
+ * @throws {Error} if any config entry is `null` or `undefined`.
  */
 function validateConfig(): void {
-    Object.values(CONFIG).forEach(element => {
-        if (element === null) {
-            throw new Error('Fatal Error: All elements in config are not set.');
+    Object.entries(CONFIG).forEach(([key, element]) => {
+        if (element === null || element === undefined) {
+            throw new Error(`Fatal Error: Config value not set (testing ${key}).`);
         }
     });
 }
