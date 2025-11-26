@@ -1,6 +1,6 @@
-import { KubeConfig, BatchV1Api } from '@kubernetes/client-node';
 import * as fs from 'fs';
 import { CONFIG } from '../config';
+import type { KubeConfig, BatchV1Api } from '@kubernetes/client-node';
 
 export interface SubmitJobOptions {
     jobId: string;
@@ -91,8 +91,10 @@ function buildJobManifest(name: string, namespace: string, image: string, payloa
  * @returns {KubeConfig}
  * @throws Error when no kube config could be loaded
  */
-function loadKubeConfig(): KubeConfig {
-    const kc = new KubeConfig();
+async function loadKubeConfig(): Promise<KubeConfig> {
+    const kcModule = await import('@kubernetes/client-node');
+    const KubeConfigClass = kcModule.KubeConfig;
+    const kc = new KubeConfigClass();
     try {
         kc.loadFromDefault();
         return kc;
@@ -131,8 +133,10 @@ export async function submitK8sJob(opts: SubmitJobOptions): Promise<any> {
         throw new Error('K8s submitter is disabled in configuration (RUNNER_EPHEMERAL_K8S=false)');
     }
 
-    const kc = loadKubeConfig();
-    const client = kc.makeApiClient(BatchV1Api) as any;
+    const kc = await loadKubeConfig();
+    const kcModule = await import('@kubernetes/client-node');
+    const BatchV1ApiClass = kcModule.BatchV1Api;
+    const client = kc.makeApiClient(BatchV1ApiClass) as any;
 
     const { ns, image } = resolveNamespaceAndImage(opts);
     const payload = buildPayload(opts);
