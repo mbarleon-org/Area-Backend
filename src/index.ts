@@ -4,6 +4,7 @@ import * as cors from 'cors';
 import { CONFIG } from './config';
 import * as express from 'express';
 import routes from './routeList.js';
+import authRoutes from './routes/auth/auth';
 import { importLegacyFiles } from './legacy/importAll';
 import { initDataSource } from './services/dataSource.js';
 import { registerWorkflows } from './api/workflowRegistration.js';
@@ -41,6 +42,10 @@ function createApp(): express.Express {
  * @returns {void}
  */
 function mountRoutes(app: express.Express): void {
+    // Mount auth routes directly (no BASE_PATH prefix)
+    app.use('/api/auth', authRoutes);
+
+    // Mount other routes under BASE_PATH
     routes.forEach(route => {
         app.use(CONFIG.BASE_PATH, route);
     });

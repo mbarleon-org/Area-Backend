@@ -118,3 +118,44 @@ export function decryptObject(stored: unknown): unknown {
         return stored;
     }
 }
+
+/**
+ * Hash a plaintext password using PBKDF2.
+ * @param {string} password - plaintext password
+ * @returns {Promise<string>} hashed password (format: pbkdf2$iterations$salt$hash)
+ */
+export async function hashPassword(password: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const salt = crypto.randomBytes(16);
+        const iterations = 100000;
+        crypto.pbkdf2(password, salt, iterations, 64, 'sha256', (err, hash) => {
+            if (err) reject(err);
+            const combined = `pbkdf2$${iterations}$${salt.toString('hex')}$${hash.toString('hex')}`;
+            resolve(combined);
+        });
+    });
+}
+
+/**
+ * Verify a plaintext password against a stored hash.
+ * @param {string} password - plaintext password to verify
+ * @param {string} storedHash - stored hash (format: pbkdf2$iterations$salt$hash)
+ * @returns {Promise<boolean>} true if password matches
+ */
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+    return new Promise((resolve) => {
+        try {
+            const [algo, iterStr, saltHex, hashHex] = storedHash.split('$');
+            if (algo !== 'pbkdf2') return resolve(false);
+            const iterations = parseInt(iterStr, 10);
+            const salt = Buffer.from(saltHex, 'hex');
+            const storedHashBuf = Buffer.from(hashHex, 'hex');
+            crypto.pbkdf2(password, salt, iterations, 64, 'sha256', (err, hash) => {
+                if (err) return resolve(false);
+                resolve(crypto.timingSafeEqual(hash, storedHashBuf));
+            });
+        } catch (e) {
+            resolve(false);
+        }
+    });
+}

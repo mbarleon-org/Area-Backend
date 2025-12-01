@@ -20,34 +20,6 @@ export interface TokenPayload {
 }
 
 /**
- * Helper to get a hashing function from src/services/crypto
- */
-function getHashFunction(): ((p: string) => Promise<string>) | null {
-    const c: any = crypto as any;
-    // try common names, return an async wrapper when needed
-    const fn = c.hashPassword ?? c.hash ?? c.hashSync ?? c.pbkdf2Hash ?? c.createHash;
-    if (!fn) return null;
-    return async (plain: string) => {
-        const out = fn.call(c, plain);
-        // if synchronous return value, wrap into Promise
-        return out instanceof Promise ? out : Promise.resolve(out);
-    };
-}
-
-/**
- * Helper to get a verify/compare function from src/services/crypto
- */
-function getVerifyFunction(): ((plain: string, hashed: string) => Promise<boolean>) | null {
-    const c: any = crypto as any;
-    const fn = c.verifyPassword ?? c.verify ?? c.compare ?? c.compareHash;
-    if (!fn) return null;
-    return async (plain: string, hashed: string) => {
-        const out = fn.call(c, plain, hashed);
-        return out instanceof Promise ? out : Promise.resolve(Boolean(out));
-    };
-}
-
-/**
  * Register a new user
  */
 export async function register(email: string, password: string, displayName?: string): Promise<string> {
@@ -56,13 +28,7 @@ export async function register(email: string, password: string, displayName?: st
         throw new Error('User already exists');
     }
 
-    const hasher = getHashFunction();
-    if (!hasher) {
-        throw new Error('Crypto service: no hash function available. Check src/services/crypto.ts');
-    }
-    const passwordHash = await hasher(password);
-
-    // createUser implementation expects a hashed password (field name handled inside userStore)
+    const passwordHash = await crypto.hashPassword(password);
     const userId = await userStore.createUser({ email, passwordHash, displayName });
     return userId;
 }
@@ -76,27 +42,21 @@ export async function login(email: string, password: string) {
         throw new Error('Invalid email or password');
     }
 
-    const verifier = getVerifyFunction();
-    if (!verifier) {
-        throw new Error('Crypto service: no verify function available. Check src/services/crypto.ts');
-    }
-
-    // be robust to different DB field names: password / passwordHash / hash
-    const storedHash: string = String((user as any).password ?? (user as any).passwordHash ?? (user as any).hash ?? '');
-    const passwordMatch = await verifier(password, storedHash);
+    const storedHash: string = String(user.password ?? '');
+    const passwordMatch = await crypto.verifyPassword(password, storedHash);
     if (!passwordMatch) {
         throw new Error('Invalid email or password');
     }
 
-    const perms = await userStore.getPermissions(String((user as any).id));
-    const sub = String((user as any).id);
+    const perms = await userStore.getPermissions(String(user.id));
+    const sub = String(user.id);
     const token = jwt.sign({ sub, perms }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
     return {
         token,
         user: {
             id: sub,
-            email: (user as any).email ?? '',
-            displayName: (user as any).displayName ?? (user as any).name ?? '',
+            email: user.email ?? '',
+            displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username ?? '',
         },
     };
 }

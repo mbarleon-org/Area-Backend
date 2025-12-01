@@ -6,7 +6,7 @@
 */
 
 import { getDataSource } from './dataSource';
-// import type { User } from '../db/types/user'; // optional typed import
+import { User } from '../db/types/user';
 
 export interface CreateUserInput {
     email: string;
@@ -19,17 +19,19 @@ export interface CreateUserInput {
  */
 export async function createUser(input: CreateUserInput): Promise<string> {
     const ds: any = getDataSource();
-    const repo: any = ds.getRepository ? ds.getRepository('user') : ds.getRepository;
-    // store password under a common field name ("password") to match likely schema
+    const repo: any = ds.getRepository(User);
+
+    const [firstName, lastName] = (input.displayName || input.email).split(' ');
     const userObj: any = {
+        username: input.email.split('@')[0],
         email: input.email,
-        // many schemas call the stored field "password"; adapt if your schema differs
         password: input.passwordHash,
-        displayName: input.displayName ?? input.email.split('@')[0],
+        firstName: firstName || 'User',
+        lastName: lastName || '',
     };
-    const created = repo.create ? repo.create(userObj) : userObj;
+    const created = repo.create(userObj);
     const saved = await repo.save(created);
-    return String(saved.id ?? saved._id ?? saved.userId ?? '');
+    return String(saved.id);
 }
 
 /**
@@ -37,8 +39,8 @@ export async function createUser(input: CreateUserInput): Promise<string> {
  */
 export async function getUserByEmail(email: string): Promise<any | null> {
     const ds: any = getDataSource();
-    const repo: any = ds.getRepository ? ds.getRepository('user') : ds.getRepository;
-    return repo.findOne ? repo.findOne({ where: { email } }) : repo.findOne({ email });
+    const repo: any = ds.getRepository(User);
+    return repo.findOne({ where: { email } });
 }
 
 /**
@@ -46,8 +48,8 @@ export async function getUserByEmail(email: string): Promise<any | null> {
  */
 export async function getUserById(id: string): Promise<any | null> {
     const ds: any = getDataSource();
-    const repo: any = ds.getRepository ? ds.getRepository('user') : ds.getRepository;
-    return repo.findOne ? repo.findOne({ where: { id } }) : repo.findOne(id);
+    const repo: any = ds.getRepository(User);
+    return repo.findOne({ where: { id: Number(id) } });
 }
 
 /**
