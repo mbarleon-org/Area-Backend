@@ -16,40 +16,20 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    container_name: area-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - area-dev
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   backend:
     image: area-backend:dev
     container_name: area-backend
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       DATABASE_URL: postgres://area:area@postgres:5432/area
-      REDIS_URL: redis://redis:6379
       RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET}
       PUBLIC_URL: http://backend:3000
-      RUNNER_CALLBACK_PATH: /api/runner/callback
       LEGACY_WORKFLOWS_DIR: /app/legacy_workflows
       LEGACY_CREDENTIALS_DIR: /app/legacy_credentials
-      USE_RUNNERS: "true"
+      USE_RUNNERS: "false"
       AREA_ENCRYPTION_KEY: ${AREA_ENCRYPTION_KEY}
-      K8S_IMAGE: area-worker:dev
-      K8S_NAMESPACE: default
-      RUNNER_EPHEMERAL_K8S: "true"
     ports:
       - "3000:3000"
     volumes:
@@ -58,10 +38,7 @@ services:
       - ./credentials:/app/legacy_credentials:ro
     networks:
       - area-dev
-      - kind
 
 networks:
   area-dev:
     name: area-dev
-  kind:
-    external: true

@@ -46,20 +46,40 @@ async function processCredentialFile(filePath: string, repo: any): Promise<void>
             console.warn(`[import-credentials] skipped (no id): ${fileName}`);
             return;
         }
-        const entity = repo.create({
-            id: cred.id,
-            name: cred.pretty_name || cred.id,
-            version: cred.version || '1.0.0',
-            type: cred.type,
-            description: cred.description || null,
-            credential: encryptObject(cred.credential || {}),
-            owners: cred.owners || [],
-            ownerTeams: cred.ownerTeams || [],
-            users: cred.users || [],
-            userTeams: cred.userTeams || []
-        });
-        await repo.save(entity);
-        console.log(`[import-credentials] imported ${cred.name}`);
+        const existing = await repo.findOne({ where: { id: cred.id } });
+        if (existing) {
+            try {
+                await repo.update({ id: cred.id }, {
+                    name: cred.pretty_name || cred.id,
+                    version: cred.version || '1.0.0',
+                    type: cred.type,
+                    description: cred.description || null,
+                    credential: encryptObject(cred.credential || {}),
+                    owners: cred.owners || [],
+                    ownerTeams: cred.ownerTeams || [],
+                    users: cred.users || [],
+                    userTeams: cred.userTeams || []
+                });
+                console.log(`[import-credentials] updated ${cred.name}`);
+            } catch (e) {
+                console.error(`[import-credentials] failed to update ${fileName}:`, e?.message || e);
+            }
+        } else {
+            const entity = repo.create({
+                id: cred.id,
+                name: cred.pretty_name || cred.id,
+                version: cred.version || '1.0.0',
+                type: cred.type,
+                description: cred.description || null,
+                credential: encryptObject(cred.credential || {}),
+                owners: cred.owners || [],
+                ownerTeams: cred.ownerTeams || [],
+                users: cred.users || [],
+                userTeams: cred.userTeams || []
+            });
+            await repo.save(entity);
+            console.log(`[import-credentials] imported ${cred.name}`);
+        }
     } catch (err: any) {
         console.error(`[import-credentials] failed ${fileName}:`, err?.message || err);
     }

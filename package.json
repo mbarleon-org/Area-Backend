@@ -16,6 +16,7 @@
     "reload-stack": "npm run build-image && npm run cleanup:k8s && npm run bootstrap:kind"
   },
   "dependencies": {
+    "discord.js": "^14.13.0",
     "@kubernetes/client-node": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
