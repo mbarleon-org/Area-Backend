@@ -7,7 +7,8 @@
 
 import { getDataSource } from './dataSource';
 import { User } from '../db/types/user';
-import { computePerms } from './permissions';
+import { computePerms, PERMISSIONS } from './permissions';
+import { permission } from 'process';
 
 export interface CreateUserInput {
     email: string;
@@ -29,11 +30,17 @@ export async function createUser(input: CreateUserInput): Promise<string> {
     const ds: any = getDataSource();
     const repo: any = ds.getRepository(User);
 
+    const userCount = await repo.count();
+
     const userObj: any = {
         username: input.username,
         email: input.email,
         passwordHash: input.passwordHash,
     };
+
+    if (userCount === 0) {
+        Object.assign(userObj, { permissions: computePerms(0, PERMISSIONS.ADMIN) });
+    }
     const created = repo.create(userObj);
     const saved = await repo.save(created);
     return String(saved.id);
