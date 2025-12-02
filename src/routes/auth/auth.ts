@@ -17,12 +17,12 @@ const router = express.Router();
  */
 router.post('/auth/register', async (req: express.Request, res: express.Response) => {
     try {
-        const { email, password, displayName } = req.body;
-        if (!email || !password) {
+        const { email, password, username } = req.body;
+        if (!email || !password ||!username) {
             return res.status(400).json({ error: 'Email and password required' });
         }
-        const userId = await authService.register(email, password, displayName);
-        res.status(201).json({ id: userId, email });
+        const userId = await authService.register(email, password, username);
+        res.status(201).json({ id: userId, email, username });
     } catch (err: any) {
         res.status(400).json({ error: err?.message ?? String(err) });
     }

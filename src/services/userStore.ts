@@ -11,7 +11,7 @@ import { User } from '../db/types/user';
 export interface CreateUserInput {
     email: string;
     passwordHash: string;
-    displayName?: string;
+    username: string;
 }
 
 /**
@@ -21,13 +21,10 @@ export async function createUser(input: CreateUserInput): Promise<string> {
     const ds: any = getDataSource();
     const repo: any = ds.getRepository(User);
 
-    const [firstName, lastName] = (input.displayName || input.email).split(' ');
     const userObj: any = {
-        username: input.email.split('@')[0],
+        username: input.username,
         email: input.email,
         password: input.passwordHash,
-        firstName: firstName || 'User',
-        lastName: lastName || '',
     };
     const created = repo.create(userObj);
     const saved = await repo.save(created);

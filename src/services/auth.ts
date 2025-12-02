@@ -20,14 +20,14 @@ export interface TokenPayload {
 /**
  * Register a new user
  */
-export async function register(email: string, password: string, displayName?: string): Promise<string> {
+export async function register(email: string, password: string, username: string): Promise<string> {
     const existing = await userStore.getUserByEmail(email);
     if (existing) {
         throw new Error('User already exists');
     }
 
     const passwordHash = await crypto.hashPassword(password);
-    const userId = await userStore.createUser({ email, passwordHash, displayName });
+    const userId = await userStore.createUser({ email, passwordHash, username });
     return userId;
 }
 
@@ -57,8 +57,8 @@ export async function login(email: string, password: string) {
         token,
         user: {
             id: sub,
-            email: user.email ?? '',
-            displayName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username ?? '',
+            email: user.email,
+            displayName: user.username,
         },
     };
 }
