@@ -40,6 +40,8 @@ export interface AppConfig {
     RUNNER_EPHEMERAL_K8S?: boolean;
     K8S_NAMESPACE?: string;
     K8S_IMAGE?: string;
+    JWT_SECRET: string;
+    JWT_EXPIRY: string;
 }
 
 /**
@@ -68,7 +70,9 @@ function buildConfig(): AppConfig {
         AREA_ENCRYPTION_KEY: process.env.AREA_ENCRYPTION_KEY,
         RUNNER_EPHEMERAL_K8S: (process.env.RUNNER_EPHEMERAL_K8S || process.env.K8S_SUBMITTER_ENABLED || process.env.ENABLE_K8S_SUBMITTER || 'false') === 'true',
         K8S_NAMESPACE: process.env.K8S_NAMESPACE || process.env.K8S_SUBMITTER_NAMESPACE || 'default',
-        K8S_IMAGE: process.env.K8S_IMAGE || process.env.K8S_SUBMITTER_IMAGE || process.env.RUNNER_EPHEMERAL_IMAGE || 'ghcr.io/area/worker:latest'
+        K8S_IMAGE: process.env.K8S_IMAGE || process.env.K8S_SUBMITTER_IMAGE || process.env.RUNNER_EPHEMERAL_IMAGE || 'ghcr.io/area/worker:latest',
+        JWT_SECRET: process.env.JWT_SECRET,
+        JWT_EXPIRY: process.env.JWT_EXPIRY || '8h'
     };
 }
 

@@ -7,6 +7,7 @@
 
 import * as express from 'express';
 import * as authService from '../../services/auth';
+import { requireAuth } from '../../middleware/user';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ const router = express.Router();
  * POST /api/auth/register
  * Register a new user
  */
-router.post('/register', async (req: express.Request, res: express.Response) => {
+router.post('/auth/register', async (req: express.Request, res: express.Response) => {
     try {
         const { email, password, displayName } = req.body;
         if (!email || !password) {
@@ -31,14 +32,14 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
  * POST /api/auth/login
  * Login user and return JWT token
  */
-router.post('/login', async (req: express.Request, res: express.Response) => {
+router.post('/auth/login', async (req: express.Request, res: express.Response) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password required' });
         }
         const result = await authService.login(email, password);
-        res.json(result);
+        res.status(200).json(result);
     } catch (err: any) {
         res.status(401).json({ error: err?.message ?? 'Invalid credentials' });
     }
@@ -48,14 +49,9 @@ router.post('/login', async (req: express.Request, res: express.Response) => {
  * GET /api/auth/me
  * Get current user info from JWT token
  */
-router.get('/me', (req: express.Request, res: express.Response) => {
+router.get('/auth/me', requireAuth, async (req: express.Request, res: express.Response) => {
     try {
-        const authHeader = req.headers.authorization?.split(' ')[1];
-        if (!authHeader) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
-        const payload = authService.verifyToken(authHeader);
-        res.json({ userId: payload.sub, permissions: payload.perms || [] });
+        res.status(200).json({ userId: req.user.sub, permissions: req.user.perms || [] });
     } catch (err: any) {
         res.status(401).json({ error: 'Invalid token' });
     }

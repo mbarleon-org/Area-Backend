@@ -20,7 +20,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "imapflow": "^1.1.1",
+    "imapflow": "^1.0.76",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.2.1",
