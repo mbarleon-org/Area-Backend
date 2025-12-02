@@ -34,12 +34,7 @@ export async function register(email: string, password: string, username: string
 /**
  * Login user and return JWT token
  */
-export async function login(email: string, password: string) {
-    const user = await userStore.getUserByEmail(email);
-    if (!user) {
-        throw new Error('Invalid email or password');
-    }
-
+async function loginCore(user: any, password: string) {
     const storedHash: string = String(user.password ?? '');
     const passwordMatch = await crypto.verifyPassword(password, storedHash);
     if (!passwordMatch) {
@@ -61,6 +56,28 @@ export async function login(email: string, password: string) {
             displayName: user.username,
         },
     };
+}
+
+/**
+ * Login by email
+ */
+export async function loginByEmail(email: string, password: string) {
+    const user = await userStore.getUserByEmail(email);
+    if (!user) {
+        throw new Error('Invalid email or password');
+    }
+    return loginCore(user, password)
+}
+
+/**
+ * Login by username
+ */
+export async function loginByUsername(username: string, password: string) {
+    const user = await userStore.getUserByUsername(username);
+    if (!user) {
+        throw new Error('Invalid username or password');
+    }
+    return loginCore(user, password)
 }
 
 /**
