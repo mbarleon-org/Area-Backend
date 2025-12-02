@@ -17,6 +17,7 @@ LABEL org.opencontainers.image.title="area-backend" \
    org.opencontainers.image.revision="${VCS_REF}"
 
 WORKDIR /app
+COPY --from=builder /app/docs ./docs
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
