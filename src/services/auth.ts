@@ -8,9 +8,7 @@
 import * as jwt from 'jsonwebtoken';
 import * as userStore from './userStore';
 import * as crypto from './crypto';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
-const JWT_EXPIRY = '8h';
+import { CONFIG } from '../config';
 
 export interface TokenPayload {
     sub: string;
@@ -50,7 +48,11 @@ export async function login(email: string, password: string) {
 
     const perms = await userStore.getPermissions(String(user.id));
     const sub = String(user.id);
-    const token = jwt.sign({ sub, perms }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    const token = jwt.sign(
+        { sub, perms },
+        CONFIG.JWT_SECRET as jwt.Secret,
+        { expiresIn: CONFIG.JWT_EXPIRY } as jwt.SignOptions,
+    );
     return {
         token,
         user: {
@@ -65,7 +67,7 @@ export async function login(email: string, password: string) {
  * Verify and decode JWT token
  */
 export function verifyToken(token: string): TokenPayload {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    return jwt.verify(token, CONFIG.JWT_SECRET) as TokenPayload;
 }
 
 /**
