@@ -1,5 +1,7 @@
 import { CONFIG } from '../config';
 import * as jwt from 'jsonwebtoken';
+import { getUserById } from '../services/userStore';
+import { isAdmin } from '../services/permissions';
 import { Request, Response, NextFunction } from 'express';
 
 declare global {
@@ -24,6 +26,23 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
         req.user = decoded;
         next();
     } catch (err) {
-        return res.status(401).json({ message: 'Invalid token' });
+        if (err.name === "TokenExpiredError") {
+            return res.status(401).json({ error: "Token expired" });
+        }
+        if (err.name === "JsonWebTokenError") {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+        if (!isAdmin((await getUserById(req.user.sub))?.permissions || 0)) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+        next();
+    } catch (err) {
+        return res.status(500).json({ message: 'Internal Server Error' });
     }
 }

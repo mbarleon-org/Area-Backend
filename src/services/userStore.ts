@@ -7,6 +7,7 @@
 
 import { getDataSource } from './dataSource';
 import { User } from '../db/types/user';
+import { computePerms } from './permissions';
 
 export interface CreateUserInput {
     email: string;
@@ -24,7 +25,7 @@ export async function createUser(input: CreateUserInput): Promise<string> {
     const userObj: any = {
         username: input.username,
         email: input.email,
-        password: input.passwordHash,
+        passwordHash: input.passwordHash,
     };
     const created = repo.create(userObj);
     const saved = await repo.save(created);
@@ -59,18 +60,37 @@ export async function getUserById(id: string): Promise<any | null> {
 }
 
 /**
- * Get user permissions (placeholder — extend based on your DB schema)
+ * Get user permissions
  */
-export async function getPermissions(userId: string): Promise<string[]> {
-    // TODO: Query user_permissions or roles table
-    // For now return empty array
-    return [];
+export async function getPermissions(userId: string): Promise<number | null> {
+    return (await getUserById(userId))?.permissions;
 }
 
 /**
- * Add permission to user (placeholder)
+ * Add permission to user
  */
-export async function addPermission(userId: string, permission: string): Promise<void> {
-    // TODO: Insert into user_permissions table
+export async function addPermission(userId: string, permission: number): Promise<void> {
+    const base = (await getPermissions(userId)) || 0;
+
+    const newPerms = computePerms(base, permission);
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(User);
+    repo.update({ id: Number(userId) }, { permissions: newPerms });
     return;
+}
+
+/**
+ * Add permission to user
+ */
+export async function updatePassword(email: string, passwordHash: string): Promise<string | null> {
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(User);
+
+    const user = await repo.findOne({ where: { email } });
+    if (!user) {
+        return null
+    }
+
+    await repo.update({ email }, { passwordHash });
+    return user.id;
 }
