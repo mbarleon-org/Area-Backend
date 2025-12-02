@@ -1,0 +1,41 @@
+import * as express from 'express';
+import { requireAdmin, requireAuth } from '../../../middleware/user';
+import { getWorkflowsByUserId } from '../../../services/workflowStore';
+
+const router = express.Router();
+
+async function getWorkflows(id: string, res: express.Response) {
+    try {
+        const results = await getWorkflowsByUserId(id);
+
+        return res.status(200).json(
+            results.map(obj => ({
+                id: obj.id,
+                name: obj.name,
+                description: obj.description,
+                enabled: obj.enabled
+            }))
+        );
+    } catch (err: any) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+router.get('/me/workflows', requireAuth, async (req: express.Request, res: express.Response) => {
+    const userId = req.user?.sub;
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    return getWorkflows(userId, res);
+});
+
+router.get('/:id/workflows', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
+    const id = req.params?.id
+    if (!id) {
+        return res.status(400).json({ error: "Missing ID" });
+    }
+
+    return getWorkflows(id, res);
+});
+
+export default router;

@@ -2,6 +2,8 @@ import { initDataSource, getDataSource } from './dataSource.js';
 import { Workflow as WorkflowEntity } from '../db/types/workflow.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getUserById } from './userStore.js';
+import { getTeamByID } from './teamStore.js';
 
 export interface StoredWorkflow {
     id: string;
@@ -191,4 +193,53 @@ export async function seedWorkflowsFromDir(dir: string = path.resolve(process.cw
         }
     }
     return imported;
+}
+
+export async function getWorkflowsByTeamId(id: string) {
+    const team = await getTeamByID(id);
+    if (!team) {
+        return [];
+    }
+
+    const workflows = team.workflows;
+    const ownWorkflows = team.ownedWorkflows;
+
+    return [...new Set([...workflows, ...ownWorkflows])];
+}
+
+export async function getWorkflowsByTeamIds(ids: string[]) {
+    if (!ids || ids.length === 0) {
+        return [];
+    }
+
+    let workflows = []
+
+    for (const id in ids) {
+        workflows = [...new Set([...workflows, ...(await getWorkflowsByTeamId(id))])];
+    }
+    return workflows;
+}
+
+export async function getWorkflowsByUserId(id: string) {
+    const user = await getUserById(id);
+    if (!user) {
+        return [];
+    }
+
+    const workflows = user.workflows;
+    const ownWorkflows = user.ownedWorkflows;
+
+    let teamWorkflows = [];
+
+    const tIds = user.teams?.map(team => String(team.id));
+    if (tIds) {
+        teamWorkflows.concat(await getWorkflowsByTeamIds(tIds));
+    }
+
+    const otIds = user.ownedTeams?.map(team => String(team.id));
+    if (otIds) {
+        teamWorkflows.concat(await getWorkflowsByTeamIds(otIds));
+    }
+
+    return [...new Set([...workflows, ...ownWorkflows, ...teamWorkflows])]
 }

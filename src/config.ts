@@ -40,6 +40,16 @@ export interface AppConfig {
     RUNNER_EPHEMERAL_K8S?: boolean;
     K8S_NAMESPACE?: string;
     K8S_IMAGE?: string;
+    JWT_SECRET: string;
+    JWT_EXPIRY: string;
+    CHECK_USER_EMAIL?: boolean;
+    SMTP_HOST?: string;
+    SMTP_PORT?: string;
+    SMTP_USER?: string;
+    SMTP_FROM?: string;
+    SMTP_PASSWORD?: string;
+    SMTP_SSL?: boolean;
+    FRONTEND_PUBLIC_URL?: string;
 }
 
 /**
@@ -50,7 +60,7 @@ export interface AppConfig {
 function buildConfig(): AppConfig {
     return {
         BASE_PATH: '/api', // enforce /api as of now
-        PUBLIC_URL: process.env.PUBLIC_URL || process.env.BACKEND_PUBLIC_URL || '',
+        PUBLIC_URL: process.env.PUBLIC_URL || '',
         LISTEN_ADDRESS: parseInt(process.env.BACKEND_ADDRESS || '', 10) || 3000,
         USE_RUNNERS: process.env.USE_RUNNERS !== 'false',
         RUNNER_SHARED_SECRET: process.env.RUNNER_SHARED_SECRET || '',
@@ -68,7 +78,17 @@ function buildConfig(): AppConfig {
         AREA_ENCRYPTION_KEY: process.env.AREA_ENCRYPTION_KEY,
         RUNNER_EPHEMERAL_K8S: (process.env.RUNNER_EPHEMERAL_K8S || process.env.K8S_SUBMITTER_ENABLED || process.env.ENABLE_K8S_SUBMITTER || 'false') === 'true',
         K8S_NAMESPACE: process.env.K8S_NAMESPACE || process.env.K8S_SUBMITTER_NAMESPACE || 'default',
-        K8S_IMAGE: process.env.K8S_IMAGE || process.env.K8S_SUBMITTER_IMAGE || process.env.RUNNER_EPHEMERAL_IMAGE || 'ghcr.io/area/worker:latest'
+        K8S_IMAGE: process.env.K8S_IMAGE || process.env.K8S_SUBMITTER_IMAGE || process.env.RUNNER_EPHEMERAL_IMAGE || 'ghcr.io/area/worker:latest',
+        JWT_SECRET: process.env.JWT_SECRET,
+        JWT_EXPIRY: process.env.JWT_EXPIRY || '8h',
+        CHECK_USER_EMAIL: process.env.CHECK_USER_EMAIL !== 'false',
+        SMTP_HOST: process.env.SMTP_HOST || (process.env.CHECK_USER_EMAIL !== 'false' ? null : ''),
+        SMTP_PORT: process.env.SMTP_PORT || (process.env.CHECK_USER_EMAIL !== 'false' ? null : ''),
+        SMTP_USER: process.env.SMTP_USER || (process.env.CHECK_USER_EMAIL !== 'false' ? null : ''),
+        SMTP_FROM: process.env.SMTP_FROM || 'AREA',
+        SMTP_PASSWORD: process.env.SMTP_PASSWORD || (process.env.CHECK_USER_EMAIL !== 'false' ? null : ''),
+        SMTP_SSL: process.env.SMTP_SSL === 'true',
+        FRONTEND_PUBLIC_URL: process.env.FRONTEND_PUBLIC_URL || process.env.PUBLIC_URL || '',
     };
 }
 
