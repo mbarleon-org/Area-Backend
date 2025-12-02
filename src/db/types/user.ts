@@ -2,7 +2,6 @@ import {
     Entity,
     PrimaryGeneratedColumn,
     Column,
-    OneToOne,
     CreateDateColumn,
     UpdateDateColumn,
     OneToMany,
@@ -11,7 +10,6 @@ import {
 import { Team } from "./team";
 import { Workflow } from "./workflow";
 import { Credential } from "./credential";
-import { UserDetails } from "./userDetails";
 import { OidcAccount } from "./oidcAccount";
 import { WorkflowResult } from "./workflowResult";
 
@@ -27,13 +25,13 @@ export class User {
     email: string;
 
     @Column({ nullable: true })
-    password: string;
+    passwordHash?: string;
 
-    @OneToOne(() => UserDetails, (details) => details.user, {
-        cascade: true,
-        eager: true
-    })
-    details: UserDetails;
+    @Column({ default: 0 })
+    permissions: number;
+
+    @Column({ type: "bytea", nullable: true })
+    profilePicture?: Buffer;
 
     @CreateDateColumn()
     createdAt: Date;

@@ -41,13 +41,14 @@ services:
       DATABASE_URL: postgres://area:area@postgres:5432/area
       # REDIS_URL: redis://redis:6379
       # RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET}
-      # PUBLIC_URL: http://backend:3000
+      PUBLIC_URL: http://127.0.0.1:3000
       # RUNNER_CALLBACK_PATH: /api/runner/callback
       # LEGACY_WORKFLOWS_DIR: /app/legacy_workflows
       # LEGACY_CREDENTIALS_DIR: /app/legacy_credentials
       USE_RUNNERS: "false"
       AREA_ENCRYPTION_KEY: ${AREA_ENCRYPTION_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      CHECK_USER_EMAIL: "false"
       # K8S_IMAGE: area-worker:dev
       # K8S_NAMESPACE: default
       # RUNNER_EPHEMERAL_K8S: "true"
