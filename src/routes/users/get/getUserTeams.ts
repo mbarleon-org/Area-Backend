@@ -4,7 +4,7 @@ import { requireAdmin, requireAuth } from '../../../middleware/user';
 
 const router = express.Router();
 
-async function getCredentials(id: string, res: express.Response) {
+async function getTeams(id: string, res: express.Response) {
     try {
         const results = await getTeamsByUserID(id);
 
@@ -19,17 +19,21 @@ async function getCredentials(id: string, res: express.Response) {
     }
 }
 
-router.get('/me/credentials', requireAuth, async (req: express.Request, res: express.Response) => {
-    return getCredentials(req.user.sub, res);
+router.get('/me/teams', requireAuth, async (req: express.Request, res: express.Response) => {
+    const userId = req.user?.sub;
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    return getTeams(userId, res);
 });
 
-router.get('/:id/credentials', requireAdmin, async (req: express.Request, res: express.Response) => {
+router.get('/:id/teams', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
     const id = req.params?.id
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });
     }
 
-    return getCredentials(id, res);
+    return getTeams(id, res);
 });
 
 export default router;

@@ -22,10 +22,14 @@ async function getCredentials(id: string, res: express.Response) {
 }
 
 router.get('/me/credentials', requireAuth, async (req: express.Request, res: express.Response) => {
-    return getCredentials(req.user.sub, res);
+    const userId = req.user?.sub;
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    return getCredentials(userId, res);
 });
 
-router.get('/:id/credentials', requireAdmin, async (req: express.Request, res: express.Response) => {
+router.get('/:id/credentials', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
     const id = req.params?.id
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });

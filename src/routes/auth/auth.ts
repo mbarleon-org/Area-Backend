@@ -38,7 +38,7 @@ router.get('/auth/reset_password', requireAuth, async (req: express.Request, res
     return resetPassword(req.user.sub, res)
 })
 
-router.get('/auth/:id/reset_password', requireAdmin, async (req: express.Request, res: express.Response) => {
+router.get('/auth/:id/reset_password', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
     const id = req.params?.id
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });

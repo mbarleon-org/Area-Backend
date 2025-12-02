@@ -15,6 +15,13 @@ export interface CreateUserInput {
     username: string;
 }
 
+export interface UpdateUserInput {
+    username?: string;
+    email?: string;
+    permissions?: number;
+    profilePicture?: Buffer | null;
+}
+
 /**
  * Create a new user in the database
  */
@@ -30,6 +37,20 @@ export async function createUser(input: CreateUserInput): Promise<string> {
     const created = repo.create(userObj);
     const saved = await repo.save(created);
     return String(saved.id);
+}
+
+/**
+ * Update user fields
+ */
+export async function updateUserById(id: string, fields: UpdateUserInput): Promise<User | null> {
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(User);
+    const user = await repo.findOne({ where: { id: Number(id) } });
+    if (!user) {
+        return null;
+    }
+    Object.assign(user, fields);
+    return repo.save(user);
 }
 
 /**
@@ -93,4 +114,14 @@ export async function updatePassword(email: string, passwordHash: string): Promi
 
     await repo.update({ email }, { passwordHash });
     return user.id;
+}
+
+/**
+ * Delete a user by ID
+ */
+export async function deleteUserById(id: string): Promise<boolean> {
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(User);
+    const result = await repo.delete({ id: Number(id) });
+    return Boolean(result?.affected && result.affected > 0);
 }
