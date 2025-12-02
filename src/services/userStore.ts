@@ -41,6 +41,15 @@ export async function getUserByEmail(email: string): Promise<any | null> {
 }
 
 /**
+ * Get user by username
+ */
+export async function getUserByUsername(username: string): Promise<any | null> {
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(User);
+    return repo.findOne({ where: { username } });
+}
+
+/**
  * Get user by ID
  */
 export async function getUserById(id: string): Promise<any | null> {

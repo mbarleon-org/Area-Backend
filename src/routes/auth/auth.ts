@@ -34,11 +34,22 @@ router.post('/auth/register', async (req: express.Request, res: express.Response
  */
 router.post('/auth/login', async (req: express.Request, res: express.Response) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
+        const { username, email, password } = req.body;
+        if ((!email && !username)|| !password) {
             return res.status(400).json({ error: 'Email and password required' });
         }
-        const result = await authService.login(email, password);
+
+        let result: any;
+        if (email) {
+            result = await authService.loginByEmail(email, password);
+        } else {
+            result = await authService.loginByUsername(email, password);
+        }
+
+        if (!result) {
+            res.status(401).json({ error: 'Invalid credentials' });
+        }
+
         res.status(200).json(result);
     } catch (err: any) {
         res.status(401).json({ error: err?.message ?? 'Invalid credentials' });
