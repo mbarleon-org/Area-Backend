@@ -1,5 +1,7 @@
 import { In } from 'typeorm';
 import { decryptObject } from './crypto.js';
+import { getUserById } from './userStore.js';
+import { getTeamByID } from './teamStore.js';
 import { Credential } from '../db/types/credential.js';
 import { getDataSource, initDataSource } from './dataSource.js';
 
@@ -65,4 +67,53 @@ export async function getCredentialsByIds(ids: string[]): Promise<Record<string,
         out[c.id] = mapEntityToStoredCredential(c);
     }
     return out;
+}
+
+export async function getCredentialsByTeamId(id: string) {
+    const team = await getTeamByID(id);
+    if (!team) {
+        return [];
+    }
+
+    const creds = team.credentials;
+    const ownCreds = team.ownedCredentials;
+
+    return [...new Set([...creds, ...ownCreds])];
+}
+
+export async function getCredentialsByTeamIds(ids: string[]) {
+    if (!ids || ids.length === 0) {
+        return [];
+    }
+
+    let creds = []
+
+    for (const id in ids) {
+        creds = [...new Set([...creds, ...(await getCredentialsByTeamId(id))])];
+    }
+    return creds;
+}
+
+export async function getCredentialsByUserId(id: string) {
+    const user = await getUserById(id);
+    if (!user) {
+        return [];
+    }
+
+    const creds = user.credentials;
+    const ownCreds = user.ownedCredentials;
+
+    let teamCreds = [];
+
+    const tIds = user.teams?.map(team => String(team.id));
+    if (tIds) {
+        teamCreds.concat(await getCredentialsByTeamIds(tIds));
+    }
+
+    const otIds = user.ownedTeams?.map(team => String(team.id));
+    if (otIds) {
+        teamCreds.concat(await getCredentialsByTeamIds(otIds));
+    }
+
+    return [...new Set([...creds, ...ownCreds, ...teamCreds])]
 }
