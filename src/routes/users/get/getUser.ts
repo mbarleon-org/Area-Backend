@@ -22,16 +22,11 @@ async function getUser(id: string, res: express.Response) {
 }
 
 router.get('/me', requireAuth, async (req: express.Request, res: express.Response) => {
-    return getUser(req.user.sub, res);
-});
-
-router.get('/:id', requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id
-    if (!id) {
-        return res.status(400).json({ error: "Missing ID" });
+    const userId = req.user?.sub;
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    return getUser(id, res);
+    return getUser(userId, res);
 });
 
 router.get('/email/:email', requireAuth, async (req: express.Request, res: express.Response) => {
@@ -66,6 +61,15 @@ router.get('/username/:username', requireAuth, async (req: express.Request, res:
     } catch (err: any) {
         return res.status(500).json({ error: "Internal server error" });
     }
+});
+
+router.get('/:id', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
+    const id = req.params?.id
+    if (!id) {
+        return res.status(400).json({ error: "Missing ID" });
+    }
+
+    return getUser(id, res);
 });
 
 export default router
