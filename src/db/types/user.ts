@@ -29,12 +29,6 @@ export class User {
     @Column({ nullable: true })
     password: string;
 
-    @Column()
-    firstName: string;
-
-    @Column()
-    lastName: string;
-
     @OneToOne(() => UserDetails, (details) => details.user, {
         cascade: true,
         eager: true
