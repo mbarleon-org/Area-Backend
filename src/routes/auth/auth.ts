@@ -27,7 +27,7 @@ async function resetPassword(id: string, getFct: (field: string) => Promise<User
             return res.status(404).json({ error: "Not found" });
         }
         const info = await authService.sendPasswordResetEmail(user.email, user.username);
-        return info === "OK" ?
+        return (info.accepted && info.accepted.length > 0) ?
             res.status(200).json({ message: "Email sent" }) :
             res.status(500).json({ error: "Internal Server Error" });
     } catch (err: any) {
@@ -141,6 +141,9 @@ router.post('/auth/login', async (req: express.Request, res: express.Response) =
 
         return res.status(200).json(result);
     } catch (err: any) {
+        if (err.message === "Invalid email or password") {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
         return res.status(500).json({ error: "Internal Server Error" });
     }
 });
