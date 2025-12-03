@@ -38,6 +38,11 @@ components:
       in: header
       name: X-Runner-Token
       description: HMAC token used to authenticate runner -> backend callbacks
+    PasswordResetToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token sent with password reset emails ("Bearer <token>")
   schemas:
     ErrorResponse:
       type: object
@@ -314,6 +319,14 @@ components:
           type: array
           items:
             type: string
+    ResetPasswordRequestBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
 paths:
   /healthz:
     get:
@@ -333,12 +346,16 @@ paths:
                 example:
                   status: ok
   /auth/reset_password:
-    get:
+    post:
       tags:
         - Auth
-      summary: Send password reset email for the caller
-      security:
-        - bearerAuth: []
+      summary: Send password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestBody'
       responses:
         '200':
           description: Reset email queued
@@ -346,8 +363,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-        '401':
-          description: Missing or invalid token
         '404':
           description: Email sending disabled
           content:
@@ -399,6 +414,8 @@ paths:
       tags:
         - Auth
       summary: Set or initialize a password using a reset token
+      security:
+        - PasswordResetToken: []
       requestBody:
         required: true
         content:
