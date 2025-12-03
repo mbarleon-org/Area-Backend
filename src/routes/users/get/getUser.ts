@@ -8,6 +8,10 @@ const router = express.Router();
 async function getUser(id: string, res: express.Response) {
     try {
         const user = await getUserById(id);
+
+        if (!user) {
+            return res.status(404).json({ error: "Not found" });
+        }
         return res.status(200).json({
             id: user.id,
             email: user.email,
