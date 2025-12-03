@@ -38,6 +38,11 @@ components:
       in: header
       name: X-Runner-Token
       description: HMAC token used to authenticate runner -> backend callbacks
+    PasswordResetToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token sent with password reset emails ("Bearer <token>")
   schemas:
     ErrorResponse:
       type: object
@@ -399,6 +404,8 @@ paths:
       tags:
         - Auth
       summary: Set or initialize a password using a reset token
+      security:
+        - PasswordResetToken: []
       requestBody:
         required: true
         content:

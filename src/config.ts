@@ -87,7 +87,7 @@ function buildConfig(): AppConfig {
         SMTP_USER: process.env.SMTP_USER || (process.env.CHECK_USER_EMAIL !== 'false' ? null : ''),
         SMTP_FROM: process.env.SMTP_FROM || 'AREA',
         SMTP_PASSWORD: process.env.SMTP_PASSWORD || (process.env.CHECK_USER_EMAIL !== 'false' ? null : ''),
-        SMTP_SSL: process.env.SMTP_SSL === 'true',
+        SMTP_SSL: process.env.SMTP_SSL !== 'false',
         FRONTEND_PUBLIC_URL: process.env.FRONTEND_PUBLIC_URL || process.env.PUBLIC_URL || '',
     };
 }
