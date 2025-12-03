@@ -1,20 +1,19 @@
 import * as express from 'express';
 import { requireAuth } from '../../middleware/user.js';
-import { isWorkflowOwner, isWorkflowUser, listWorkflows, loadWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
+import { getPublicWorkflows, isWorkflowOwner, isWorkflowUser, loadWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
 
 const router = express.Router();
 
-/**
- * Handler for `GET /workflows`.
- * Lists all workflows from the store.
- *
- * @param {express.Request} _req - Express request (unused)
- * @param {express.Response} res - Express response
- * @returns {Promise<express.Response>} JSON response with `{ workflows }`
- */
-async function listWorkflowsHandler(_req: express.Request, res: express.Response): Promise<any> {
-    const items = await listWorkflows();
-    return res.json({ workflows: items });
+async function getPublicWorkflowsHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        const wfs = await getPublicWorkflows();
+        if (!wfs || wfs.length === 0) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        return res.status(200).json({ workflows: wfs });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'invalid_workflow' });
+    }
 }
 
 /**
@@ -28,7 +27,7 @@ async function listWorkflowsHandler(_req: express.Request, res: express.Response
 async function getWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
         if (!req.user?.sub) {
-            return res.status(401).json({ error: 'Unauthorized'});
+            return res.status(401).json({ error: 'Unauthorized' });
         }
         const wf = await loadWorkflow(req.params.id);
         if (!wf) {
@@ -104,7 +103,7 @@ async function disableWorkflowHandler(req: express.Request, res: express.Respons
     return res.json(wf);
 }
 
-router.get('/workflows', requireAuth, listWorkflowsHandler);
+router.get('/workflows/public', requireAuth, getPublicWorkflowsHandler);
 router.post('/workflows', requireAuth, postWorkflowHandler);
 router.get('/workflows/:id', requireAuth, getWorkflowHandler);
 router.post('/workflows/:id/enable', requireAuth, enableWorkflowHandler);

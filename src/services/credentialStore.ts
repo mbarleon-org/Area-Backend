@@ -1,5 +1,5 @@
 import { In, Repository } from 'typeorm';
-import { decryptObject } from './crypto.js';
+import { decryptObject, encryptObject } from './crypto.js';
 import { getUserById } from './userStore.js';
 import { getTeamByID } from './teamStore.js';
 import { Credential } from '../db/types/credential.js';
@@ -12,6 +12,31 @@ export interface StoredCredential {
     type: string;
     data: any;
     name?: string;
+    version?: string;
+    description?: string | null;
+}
+
+const REDACTED_VALUE = '***';
+
+function redactCredentialData(value: any): any {
+    if (value === null || value === undefined) {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map(() => REDACTED_VALUE);
+    }
+    if (typeof value === 'object') {
+        const maybeEncrypted = value as Record<string, any>;
+        if (maybeEncrypted.__encrypted === true && typeof maybeEncrypted.data === 'string') {
+            return REDACTED_VALUE;
+        }
+        const out: Record<string, any> = {};
+        for (const key of Object.keys(maybeEncrypted)) {
+            out[key] = redactCredentialData(maybeEncrypted[key]);
+        }
+        return out;
+    }
+    return REDACTED_VALUE;
 }
 
 /**
@@ -30,12 +55,15 @@ async function getCredentialRepository(): Promise<Repository<Credential>> {
  * @param {any} entity - Raw credential entity from the DB
  * @returns {StoredCredential} normalized credential object
  */
-function mapEntityToStoredCredential(entity: any): StoredCredential {
+function mapEntityToStoredCredential(entity: any, includeSecret: boolean = false): StoredCredential {
+    const decrypted = decryptObject(entity.credential);
     return {
         id: entity.id,
         type: entity.type,
-        data: decryptObject(entity.credential),
-        name: entity.name
+        data: includeSecret ? decrypted : redactCredentialData(decrypted),
+        name: entity.name,
+        version: entity.version,
+        description: entity.description ?? null
     };
 }
 
@@ -53,12 +81,22 @@ export async function getCredentialById(id: string): Promise<StoredCredential | 
 }
 
 /**
+ * Load a credential by id. Alias for `getCredentialById` to mirror the workflow API.
+ *
+ * @param {string} id - Credential identifier
+ * @returns {Promise<StoredCredential|null>} stored credential or null when missing
+ */
+export async function loadCredential(id: string): Promise<StoredCredential | null> {
+    return getCredentialById(id);
+}
+
+/**
  * Retrieve multiple stored credentials by their ids.
  *
  * @param {string[]} ids - Array of credential ids to fetch
  * @returns {Promise<Record<string, StoredCredential>>} Map of id -> StoredCredential
  */
-export async function getCredentialsByIds(ids: string[]): Promise<Record<string, StoredCredential>> {
+export async function getCredentialsByIds(ids: string[], options: { includeSecret?: boolean } = {}): Promise<Record<string, StoredCredential>> {
     if (!ids || ids.length === 0) {
         return {};
     }
@@ -66,9 +104,45 @@ export async function getCredentialsByIds(ids: string[]): Promise<Record<string,
     const creds = await repo.find({ where: { id: In(ids) } });
     const out: Record<string, StoredCredential> = {};
     for (const c of creds) {
-        out[c.id] = mapEntityToStoredCredential(c);
+        out[c.id] = mapEntityToStoredCredential(c, options.includeSecret === true);
     }
     return out;
+}
+
+interface CredentialDefinition extends Partial<StoredCredential> {
+    credential?: any;
+}
+
+/**
+ * Create or update a credential definition in the database.
+ *
+ * @param {CredentialDefinition} def - credential payload (must contain id, type and data/credential)
+ * @returns {Promise<StoredCredential>} stored credential view
+ */
+export async function saveCredential(def: CredentialDefinition): Promise<StoredCredential> {
+    if (!def || def.id === undefined || def.id === null) {
+        throw new Error('credential id is required');
+    }
+    if (!def.type) {
+        throw new Error('credential type is required');
+    }
+    const rawData = def.data ?? def.credential;
+    if (rawData === undefined) {
+        throw new Error('credential data is required');
+    }
+
+    const repo = await getCredentialRepository();
+    const entity = repo.create({
+        id: String(def.id),
+        name: def.name || (def as any).pretty_name || String(def.id),
+        type: def.type,
+        version: def.version || '1.0.0',
+        description: def.description || null,
+        credential: encryptObject(rawData)
+    });
+
+    const saved = await repo.save(entity);
+    return mapEntityToStoredCredential(saved);
 }
 
 export async function getCredentialsByTeamId(id: string) {
@@ -162,15 +236,17 @@ export async function isCredentialUser(cId: string, uId: string): Promise<boolea
         [...user.teams, ...user.ownedTeams].some(t => [...entity.userTeams, ...entity.ownerTeams].some(c => c.id === t.id));
 }
 
-export async function getPublicCredentials(): Promise<Credential[]> {
+export async function getPublicCredentials(): Promise<StoredCredential[]> {
     const repo = await getCredentialRepository();
-    const entities = await repo
-        .createQueryBuilder("x")
-        .where("(x.owners IS NULL OR x.owners = '{}')")
-        .andWhere("(x.users IS NULL OR x.users = '{}')")
-        .andWhere("(x.userTeams IS NULL OR x.userTeams = '{}')")
-        .andWhere("(x.ownerTeams IS NULL OR x.ownerTeams = '{}')")
-        .getMany();
+    const entities = await repo.find({ relations: ['owners', 'users', 'userTeams', 'ownerTeams'] });
 
-    return entities;
+    return entities
+        .filter((e) => {
+            const hasOwners = Array.isArray(e.owners) && e.owners.length > 0;
+            const hasUsers = Array.isArray(e.users) && e.users.length > 0;
+            const hasUserTeams = Array.isArray(e.userTeams) && e.userTeams.length > 0;
+            const hasOwnerTeams = Array.isArray(e.ownerTeams) && e.ownerTeams.length > 0;
+            return !(hasOwners || hasUsers || hasUserTeams || hasOwnerTeams);
+        })
+        .map(entity => mapEntityToStoredCredential(entity));
 }

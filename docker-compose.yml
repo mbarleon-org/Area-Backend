@@ -43,8 +43,8 @@ services:
       # RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET}
       PUBLIC_URL: http://127.0.0.1:3000
       # RUNNER_CALLBACK_PATH: /api/runner/callback
-      # LEGACY_WORKFLOWS_DIR: /app/legacy_workflows
-      # LEGACY_CREDENTIALS_DIR: /app/legacy_credentials
+      LEGACY_WORKFLOWS_DIR: /app/legacy_workflows
+      LEGACY_CREDENTIALS_DIR: /app/legacy_credentials
       USE_RUNNERS: "false"
       AREA_ENCRYPTION_KEY: ${AREA_ENCRYPTION_KEY}
       JWT_SECRET: ${JWT_SECRET}
@@ -54,10 +54,10 @@ services:
       # RUNNER_EPHEMERAL_K8S: "true"
     ports:
       - "3000:3000"
-    # volumes:
+    volumes:
     #   - ~/.kube/config.docker:/root/.kube/config:ro
-    #   - ./workflows:/app/legacy_workflows:ro
-    #   - ./credentials:/app/legacy_credentials:ro
+      - ./workflows:/app/legacy_workflows:ro
+      - ./credentials:/app/legacy_credentials:ro
     networks:
       - area-dev
       # - kind
