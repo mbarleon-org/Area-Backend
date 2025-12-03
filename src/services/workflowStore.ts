@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getUserById } from './userStore.js';
 import { getTeamByID } from './teamStore.js';
+import { User } from '../db/types/user.js';
+import { isAdmin } from './permissions.js';
 
 export interface StoredWorkflow {
     id: string;
@@ -220,7 +222,7 @@ export async function getWorkflowsByTeamIds(ids: string[]) {
     return workflows;
 }
 
-export async function getWorkflowsByUserId(id: string) {
+export async function getWorkflowsByUserId(id: string): Promise<WorkflowEntity[]> {
     const user = await getUserById(id);
     if (!user) {
         return [];
@@ -242,4 +244,66 @@ export async function getWorkflowsByUserId(id: string) {
     }
 
     return [...new Set([...workflows, ...ownWorkflows, ...teamWorkflows])]
+}
+
+export async function isWorkflowOwner(wId: string, uId: string): Promise<boolean> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const entity = await repo.findOne({ where: { id: wId } });
+
+    if (!entity) {
+        return false;
+    }
+
+    const num_uId = Number(uId);
+
+    const userRepo = getDataSource().getRepository(User);
+    const user = await userRepo.findOne({ where: { id: num_uId } });
+
+    if (!entity.owners && !entity.ownerTeams) {
+        return user && isAdmin(user!.permissions);
+    }
+
+    return entity.owners.some(u => u.id === num_uId) ||
+        [...user.teams, ...user.ownedTeams].some(t => entity.ownerTeams.some(c => c.id === t.id));
+}
+
+export async function isWorkflowUser(wId: string, uId: string): Promise<boolean> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const entity = await repo.findOne({ where: { id: wId } });
+
+    if (!entity) {
+        return false;
+    }
+
+    const num_uId = Number(uId);
+
+    const userRepo = getDataSource().getRepository(User);
+    const user = await userRepo.findOne({ where: { id: num_uId } });
+
+    if (!entity.owners && !entity.users && !entity.userTeams && !entity.ownerTeams) {
+        return true;
+    }
+
+    return [...entity.users, ...entity.owners].some(u => u.id === num_uId) ||
+        [...user.teams, ...user.ownedTeams].some(t => [...entity.userTeams, ...entity.ownerTeams].some(c => c.id === t.id));
+}
+
+export async function getPublicWorkflows(): Promise<WorkflowEntity[]> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const entities = await repo
+        .createQueryBuilder("x")
+        .where("(x.owners IS NULL OR x.owners = '{}')")
+        .andWhere("(x.users IS NULL OR x.users = '{}')")
+        .andWhere("(x.userTeams IS NULL OR x.userTeams = '{}')")
+        .andWhere("(x.ownerTeams IS NULL OR x.ownerTeams = '{}')")
+        .getMany();
+
+    return entities;
+}
+
+export async function getUserRunnableWorkflows(uId: string): Promise<WorkflowEntity[]> {
+    return [...(await getWorkflowsByUserId(uId)), ...(await getPublicWorkflows())];
 }

@@ -1,9 +1,11 @@
-import { In } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { decryptObject } from './crypto.js';
 import { getUserById } from './userStore.js';
 import { getTeamByID } from './teamStore.js';
 import { Credential } from '../db/types/credential.js';
 import { getDataSource, initDataSource } from './dataSource.js';
+import { User } from '../db/types/user.js';
+import { isAdmin } from './permissions.js';
 
 export interface StoredCredential {
     id: string;
@@ -17,7 +19,7 @@ export interface StoredCredential {
  *
  * @returns {Promise<any>} repository instance for the `Credential` entity
  */
-async function getCredentialRepository(): Promise<any> {
+async function getCredentialRepository(): Promise<Repository<Credential>> {
     await initDataSource();
     return getDataSource().getRepository(Credential);
 }
@@ -116,4 +118,59 @@ export async function getCredentialsByUserId(id: string) {
     }
 
     return [...new Set([...creds, ...ownCreds, ...teamCreds])]
+}
+
+export async function isCredentialOwner(cId: string, uId: string): Promise<boolean> {
+    const repo = await getCredentialRepository();
+    const entity = await repo.findOne({ where: { id: cId } });
+
+    if (!entity) {
+        return false;
+    }
+
+    const num_uId = Number(uId);
+
+    const userRepo = getDataSource().getRepository(User);
+    const user = await userRepo.findOne({ where: { id: num_uId } });
+
+    if (!entity.owners && !entity.ownerTeams) {
+        return user && isAdmin(user!.permissions);
+    }
+
+    return entity.owners.some(u => u.id === num_uId) ||
+        [...user.teams, ...user.ownedTeams].some(t => entity.ownerTeams.some(c => c.id === t.id));
+}
+
+export async function isCredentialUser(cId: string, uId: string): Promise<boolean> {
+    const repo = await getCredentialRepository();
+    const entity = await repo.findOne({ where: { id: cId } });
+
+    if (!entity) {
+        return false;
+    }
+
+    const num_uId = Number(uId);
+
+    const userRepo = getDataSource().getRepository(User);
+    const user = await userRepo.findOne({ where: { id: num_uId } });
+
+    if (!entity.owners && !entity.users && !entity.userTeams && !entity.ownerTeams) {
+        return true;
+    }
+
+    return [...entity.users, ...entity.owners].some(u => u.id === num_uId) ||
+        [...user.teams, ...user.ownedTeams].some(t => [...entity.userTeams, ...entity.ownerTeams].some(c => c.id === t.id));
+}
+
+export async function getPublicCredentials(): Promise<Credential[]> {
+    const repo = await getCredentialRepository();
+    const entities = await repo
+        .createQueryBuilder("x")
+        .where("(x.owners IS NULL OR x.owners = '{}')")
+        .andWhere("(x.users IS NULL OR x.users = '{}')")
+        .andWhere("(x.userTeams IS NULL OR x.userTeams = '{}')")
+        .andWhere("(x.ownerTeams IS NULL OR x.ownerTeams = '{}')")
+        .getMany();
+
+    return entities;
 }
