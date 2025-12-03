@@ -666,6 +666,8 @@ paths:
     post:
       tags:
         - Workflows
+      security:
+        - bearerAuth: []
       summary: Create or update a workflow
       requestBody:
         required: true
@@ -690,6 +692,8 @@ paths:
     get:
       tags:
         - Workflows
+      security:
+        - bearerAuth: []
       summary: Load a workflow
       parameters:
         - in: path
@@ -714,6 +718,8 @@ paths:
     post:
       tags:
         - Workflows
+      security:
+        - bearerAuth: []
       summary: Enable a workflow
       parameters:
         - in: path
@@ -734,6 +740,8 @@ paths:
     post:
       tags:
         - Workflows
+      security:
+        - bearerAuth: []
       summary: Disable a workflow
       parameters:
         - in: path
@@ -754,6 +762,8 @@ paths:
     get:
       tags:
         - Modules
+      security:
+        - bearerAuth: []
       summary: Reload the module catalog
       responses:
         '200':
