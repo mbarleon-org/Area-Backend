@@ -34,7 +34,7 @@ async function resetPassword(id: string, res: express.Response) {
     }
 }
 
-router.get('/auth/reset_password', requireAuth, async (req: express.Request, res: express.Response) => {
+router.get('/auth/reset_password', async (req: express.Request, res: express.Response) => {
     return resetPassword(req.user.sub, res)
 })
 

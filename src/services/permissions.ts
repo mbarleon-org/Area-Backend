@@ -1,5 +1,5 @@
 export const PERMISSIONS = {
-    ADMIN: 0b1
+    ADMIN: 0b1 << 0
 };
 
 export function computePerms(base: number, newPerm: number): number {
