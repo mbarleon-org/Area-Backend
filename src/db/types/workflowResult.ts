@@ -18,7 +18,7 @@ export class WorkflowResult {
     jobId?: string;
 
     @ManyToOne(() => Workflow, (workflow) => workflow.results, { onDelete: "CASCADE" })
-    @JoinColumn()
+    @JoinColumn({ name: 'workflow_id' })
     workflow: Workflow;
 
     @Column()

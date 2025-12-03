@@ -37,7 +37,7 @@ async function buildCredentialGetter(wf: any): Promise<(credentialId: string) =>
     const credIds = extractCredentialIds(wf || {});
     const credsMap: Record<string, any> = Object.create(null);
     if (credIds && credIds.length > 0) {
-        const fetched = await getCredentialsByIds(credIds);
+        const fetched = await getCredentialsByIds(credIds, { includeSecret: true });
         for (const c of Object.values(fetched)) {
             const id = String((c as any).id);
             credsMap[id] = { type: (c as any).type, data: (c as any).data || (c as any).credential, name: (c as any).name };

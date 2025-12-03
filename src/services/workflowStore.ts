@@ -293,15 +293,15 @@ export async function isWorkflowUser(wId: string, uId: string): Promise<boolean>
 export async function getPublicWorkflows(): Promise<WorkflowEntity[]> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
-    const entities = await repo
-        .createQueryBuilder("x")
-        .where("(x.owners IS NULL OR x.owners = '{}')")
-        .andWhere("(x.users IS NULL OR x.users = '{}')")
-        .andWhere("(x.userTeams IS NULL OR x.userTeams = '{}')")
-        .andWhere("(x.ownerTeams IS NULL OR x.ownerTeams = '{}')")
-        .getMany();
+    const entities = await repo.find({ relations: ['owners', 'users', 'userTeams', 'ownerTeams'] });
 
-    return entities;
+    return entities.filter((e) => {
+        const hasOwners = Array.isArray(e.owners) && e.owners.length > 0;
+        const hasUsers = Array.isArray(e.users) && e.users.length > 0;
+        const hasUserTeams = Array.isArray(e.userTeams) && e.userTeams.length > 0;
+        const hasOwnerTeams = Array.isArray(e.ownerTeams) && e.ownerTeams.length > 0;
+        return !(hasOwners || hasUsers || hasUserTeams || hasOwnerTeams);
+    });
 }
 
 export async function getUserRunnableWorkflows(uId: string): Promise<WorkflowEntity[]> {

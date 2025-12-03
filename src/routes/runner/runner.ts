@@ -102,7 +102,7 @@ async function postCredentialsHandler(req: express.Request, res: express.Respons
         return res.json({ credentials: {} });
     }
 
-    const credentials = await getCredentialsByIds(credentialIds);
+    const credentials = await getCredentialsByIds(credentialIds, { includeSecret: true });
     if (job) {
         await updateRunnerJob(job.jobId, { status: 'running' });
     }

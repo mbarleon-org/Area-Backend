@@ -8,6 +8,9 @@ async function getCredentials(id: string, res: express.Response) {
     try {
         const results = await getCredentialsByUserId(id);
 
+        if (!results || results.length === 0) {
+            return res.status(404).json({ error: "Not found" });
+        }
         return res.status(200).json(
             results.map(obj => ({
                 id: obj.id,
