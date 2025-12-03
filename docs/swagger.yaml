@@ -363,8 +363,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-        '401':
-          description: Missing or invalid token
         '404':
           description: Email sending disabled
           content:
