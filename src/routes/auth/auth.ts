@@ -8,19 +8,20 @@
 import * as express from 'express';
 import * as jwt from 'jsonwebtoken';
 import { CONFIG } from '../../config';
+import { User } from '../../db/types/user';
 import * as authService from '../../services/auth';
-import { getUserById } from '../../services/userStore';
 import { requireAuth, requireAdmin } from '../../middleware/user';
+import { getUserByEmail, getUserById, getUserByUsername } from '../../services/userStore';
 
 const router = express.Router();
 
-async function resetPassword(id: string, res: express.Response) {
+async function resetPassword(id: string, getFct: (field: string) => Promise<User>, res: express.Response) {
     try {
         if (!CONFIG.CHECK_USER_EMAIL) {
             return res.status(404).json({ message: "Not found" });
         }
 
-        const user = await getUserById(id)
+        const user = await getFct(id)
 
         if (user === null) {
             return res.status(404).json({ error: "Not found" });
@@ -34,8 +35,14 @@ async function resetPassword(id: string, res: express.Response) {
     }
 }
 
-router.get('/auth/reset_password', async (req: express.Request, res: express.Response) => {
-    return resetPassword(req.user.sub, res)
+router.post('/auth/reset_password', async (req: express.Request, res: express.Response) => {
+    if (req.body.email) {
+        return resetPassword(req.body.email, getUserByEmail, res)
+    }
+    if (req.body.username) {
+        return resetPassword(req.body.username, getUserByUsername, res)
+    }
+    return res.status(400).json({ error: "Missing fields: email or username" })
 })
 
 router.get('/auth/:id/reset_password', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
@@ -43,8 +50,7 @@ router.get('/auth/:id/reset_password', requireAuth, requireAdmin, async (req: ex
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });
     }
-
-    return resetPassword(id, res);
+    return resetPassword(id, getUserById, res);
 })
 
 
@@ -104,7 +110,7 @@ router.post('/auth/register', async (req: express.Request, res: express.Response
     } catch (err: any) {
         if (err.message &&
             ((err.message as string).endsWith("(email)") ||
-            (err.message as string).endsWith("(username)"))) {
+                (err.message as string).endsWith("(username)"))) {
             return res.status(409).json({ message: err.message });
         }
         return res.status(500).json({ error: "Internal Server Error" });

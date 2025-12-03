@@ -319,6 +319,14 @@ components:
           type: array
           items:
             type: string
+    ResetPasswordRequestBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
 paths:
   /healthz:
     get:
@@ -338,10 +346,16 @@ paths:
                 example:
                   status: ok
   /auth/reset_password:
-    get:
+    post:
       tags:
         - Auth
-      summary: Send password reset email for the caller
+      summary: Send password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestBody'
       responses:
         '200':
           description: Reset email queued
