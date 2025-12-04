@@ -1,18 +1,45 @@
 import * as express from 'express';
-import { requireAuth } from '../../middleware/user.js';
-import { getPublicCredentials, isCredentialUser, loadCredential, saveCredential } from '../../services/credentialStore.js';
+import { requireAdmin, requireAuth } from '../../middleware/user.js';
+import { getCredentialsByUserId, getPublicCredentials, isCredentialUser, listCredentials, loadCredential, saveCredential } from '../../services/credentialStore.js';
 
 const router = express.Router();
 
 async function getPublicCredentialsHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
-        const wfs = await getPublicCredentials();
-        if (!wfs || wfs.length === 0) {
+        const creds = await getPublicCredentials();
+        if (!creds || creds.length === 0) {
             return res.status(404).json({ error: 'not found' });
         }
-        return res.status(200).json({ credentials: wfs });
+        return res.status(200).json({ credentials: creds });
     } catch (err: any) {
-        return res.status(500).json({ error: err?.message || 'invalid_workflow' });
+        return res.status(500).json({ error: err?.message || 'Internal error' });
+    }
+}
+
+async function getUserCredentialsHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        if (!req.user?.sub) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const creds = await getCredentialsByUserId(req.user!.sub);
+        if (!creds || creds.length === 0) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        return res.status(200).json({ credentials: creds });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'Internal error' });
+    }
+}
+
+async function getAllCredentialsHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        const creds = await listCredentials();
+        if (!creds || creds.length === 0) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        return res.status(200).json({ credentials: creds });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 }
 
@@ -29,16 +56,19 @@ async function getCredentialHandler(req: express.Request, res: express.Response)
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
+        if (!req.params.id) {
+            return res.status(400).json({ error: 'Invalid request' });
+        }
         const wf = await loadCredential(req.params.id);
         if (!wf) {
             return res.status(404).json({ error: 'not found' });
         }
-        if (!isCredentialUser(wf.id, req.user!.sub)) {
+        if (!(await isCredentialUser(wf.id, req.user!.sub))) {
             return res.status(403).json({ error: 'Forbidden' });
         }
         return res.status(200).json(wf);
     } catch (err: any) {
-        return res.status(400).json({ error: err?.message || 'invalid_workflow' });
+        return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 }
 
@@ -52,13 +82,18 @@ async function getCredentialHandler(req: express.Request, res: express.Response)
  */
 async function postCredentialHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
-        const saved = await saveCredential(req.body);
+        if (!req.user?.sub) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const saved = await saveCredential(req.body, req.user!.sub);
         return res.status(201).json(saved);
     } catch (err: any) {
-        return res.status(400).json({ error: err?.message || 'invalid_workflow' });
+        return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 }
 
+router.get('/credentials', requireAuth, getUserCredentialsHandler);
+router.get('/credentials/all', requireAuth, requireAdmin, getAllCredentialsHandler);
 router.get('/credentials/public', requireAuth, getPublicCredentialsHandler);
 router.post('/credentials', requireAuth, postCredentialHandler);
 router.get('/credentials/:id', requireAuth, getCredentialHandler);

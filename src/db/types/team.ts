@@ -14,10 +14,10 @@ export class Team {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
+    @Column({ unique: true })
     name: string;
 
-    @ManyToMany(() => User, user => user.teams)
+    @ManyToMany(() => User, user => user.ownedTeams)
     @JoinTable()
     owners: User[];
 

@@ -10,7 +10,7 @@ import { Team } from "./team"
 
 @Entity()
 export class Credential {
-    @PrimaryColumn()
+    @PrimaryColumn({ unique: true })
     id: string;
 
     @Column()

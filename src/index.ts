@@ -53,6 +53,10 @@ function mountRoutes(app: express.Express): void {
  * @returns {void}
  */
 function startServer(app: express.Express): void {
+    app.use((_req, res, _next) => {
+        res.status(404).json({ message: 'Not found' });
+    });
+
     app.listen(CONFIG.LISTEN_ADDRESS, () => {
         console.log('Server is running on port', CONFIG.LISTEN_ADDRESS);
     });

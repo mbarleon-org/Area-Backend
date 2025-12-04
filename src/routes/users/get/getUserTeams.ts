@@ -22,14 +22,6 @@ async function getTeams(id: string, res: express.Response) {
     }
 }
 
-router.get('/me/teams', requireAuth, async (req: express.Request, res: express.Response) => {
-    const userId = req.user?.sub;
-    if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    return getTeams(userId, res);
-});
-
 router.get('/:id/teams', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
     const id = req.params?.id
     if (!id) {

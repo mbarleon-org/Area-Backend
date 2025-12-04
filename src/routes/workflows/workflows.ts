@@ -1,6 +1,6 @@
 import * as express from 'express';
-import { requireAuth } from '../../middleware/user.js';
-import { getPublicWorkflows, isWorkflowOwner, isWorkflowUser, loadWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
+import { requireAdmin, requireAuth } from '../../middleware/user.js';
+import { getPublicWorkflows, getWorkflowsByUserId, isWorkflowOwner, isWorkflowUser, listWorkflows, loadWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
 
 const router = express.Router();
 
@@ -12,7 +12,34 @@ async function getPublicWorkflowsHandler(req: express.Request, res: express.Resp
         }
         return res.status(200).json({ workflows: wfs });
     } catch (err: any) {
-        return res.status(500).json({ error: err?.message || 'invalid_workflow' });
+        return res.status(500).json({ error: err?.message || 'Internal error' });
+    }
+}
+
+async function getUserWorkflowsHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        if (!req.user?.sub) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const wfs = await getWorkflowsByUserId(req.user!.sub);
+        if (!wfs || wfs.length === 0) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        return res.status(200).json({ workflows: wfs });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'Internal error'});
+    }
+}
+
+async function getAllWorkflowsHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        const wfs = await listWorkflows();
+        if (!wfs || wfs.length === 0) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        return res.status(200).json({ workflows: wfs });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'Internal error'});
     }
 }
 
@@ -33,7 +60,7 @@ async function getWorkflowHandler(req: express.Request, res: express.Response): 
         if (!wf) {
             return res.status(404).json({ error: 'not found' });
         }
-        if (!isWorkflowUser(wf.id, req.user!.sub)) {
+        if (!(await isWorkflowUser(wf.id, req.user!.sub))) {
             return res.status(403).json({ error: 'Forbidden' });
         }
         return res.status(200).json(wf);
@@ -52,7 +79,10 @@ async function getWorkflowHandler(req: express.Request, res: express.Response): 
  */
 async function postWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
-        const saved = await saveWorkflow(req.body);
+        if (!req.user?.sub) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const saved = await saveWorkflow(req.body, req.user!.sub);
         return res.status(201).json(saved);
     } catch (err: any) {
         return res.status(400).json({ error: err?.message || 'invalid_workflow' });
@@ -71,7 +101,7 @@ async function enableWorkflowHandler(req: express.Request, res: express.Response
     const wId = req.params?.id;
     const uId = req.user?.sub;
 
-    if (!uId || !wId || !isWorkflowOwner(wId, uId)) {
+    if (!uId || !wId || !(await isWorkflowOwner(wId, uId))) {
         return res.status(401).json({ error: "unauthorized" });
     }
     const wf = await setWorkflowEnabled(wId, true);
@@ -93,7 +123,7 @@ async function disableWorkflowHandler(req: express.Request, res: express.Respons
     const wId = req.params?.id;
     const uId = req.user?.sub;
 
-    if (!uId || !wId || !isWorkflowOwner(wId, uId)) {
+    if (!uId || !wId || !(await isWorkflowOwner(wId, uId))) {
         return res.status(401).json({ error: "unauthorized" });
     }
     const wf = await setWorkflowEnabled(wId, false);
@@ -104,6 +134,8 @@ async function disableWorkflowHandler(req: express.Request, res: express.Respons
 }
 
 router.get('/workflows/public', requireAuth, getPublicWorkflowsHandler);
+router.get('/workflows', requireAuth, getUserWorkflowsHandler);
+router.get('/workflows/all', requireAuth, requireAdmin, getAllWorkflowsHandler);
 router.post('/workflows', requireAuth, postWorkflowHandler);
 router.get('/workflows/:id', requireAuth, getWorkflowHandler);
 router.post('/workflows/:id/enable', requireAuth, enableWorkflowHandler);

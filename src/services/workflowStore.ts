@@ -66,10 +66,10 @@ export async function loadWorkflow(id: string): Promise<StoredWorkflow | null> {
  * @param {StoredWorkflow} def - workflow definition to persist
  * @returns {Promise<void>} resolves when saved
  */
-export async function persistWorkflowDefinition(def: StoredWorkflow): Promise<void> {
+export async function persistWorkflowDefinition(def: StoredWorkflow, user?: User): Promise<WorkflowEntity> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
-    const entity = repo.create({
+    const payload: Partial<WorkflowEntity> = {
         id: def.id,
         name: def.pretty_name || def.id,
         version: def.version || '1.0.0',
@@ -77,8 +77,12 @@ export async function persistWorkflowDefinition(def: StoredWorkflow): Promise<vo
         enabled: !!def.enabled,
         triggers: def.triggers || [],
         actions: def.actions || []
-    });
-    await repo.save(entity);
+    };
+    if (user) {
+        payload.owners = [user];
+    }
+    const entity = repo.create(payload);
+    return repo.save(entity);
 }
 
 /**
@@ -87,13 +91,21 @@ export async function persistWorkflowDefinition(def: StoredWorkflow): Promise<vo
  * @param {StoredWorkflow} def - workflow definition to save (must include `id`)
  * @returns {Promise<StoredWorkflow>} saved workflow
  */
-export async function saveWorkflow(def: StoredWorkflow): Promise<StoredWorkflow> {
+export async function saveWorkflow(def: StoredWorkflow, uId?: string): Promise<StoredWorkflow> {
     if (!def?.id) {
         throw new Error('workflow id is required');
     }
+    await initDataSource();
+    let owner: User | undefined;
+    if (uId) {
+        owner = await getUserById(uId) as User | undefined;
+        if (!owner) {
+            throw new Error('valid user id is required for workflow creation');
+        }
+    }
     const versioned = { version: def.version || '1.0.0', enabled: !!def.enabled, ...def };
-    await persistWorkflowDefinition(versioned);
-    return mapEntityToWorkflow(await getDataSource().getRepository(WorkflowEntity).findOneOrFail({ where: { id: def.id } }));
+    const saved = await persistWorkflowDefinition(versioned, owner);
+    return mapEntityToWorkflow(saved);
 }
 
 /**
@@ -206,7 +218,7 @@ export async function getWorkflowsByTeamId(id: string) {
     const workflows = team.workflows;
     const ownWorkflows = team.ownedWorkflows;
 
-    return [...new Set([...workflows, ...ownWorkflows])];
+    return [...new Set([...(workflows || []), ...(ownWorkflows || [])])];
 }
 
 export async function getWorkflowsByTeamIds(ids: string[]) {
@@ -214,10 +226,10 @@ export async function getWorkflowsByTeamIds(ids: string[]) {
         return [];
     }
 
-    let workflows = []
-
-    for (const id in ids) {
-        workflows = [...new Set([...workflows, ...(await getWorkflowsByTeamId(id))])];
+    let workflows: WorkflowEntity[] = [];
+    for (const id of ids) {
+        const teamWorkflows = await getWorkflowsByTeamId(id);
+        workflows = [...new Set([...(workflows || []), ...(teamWorkflows || [])])];
     }
     return workflows;
 }
@@ -231,63 +243,68 @@ export async function getWorkflowsByUserId(id: string): Promise<WorkflowEntity[]
     const workflows = user.workflows;
     const ownWorkflows = user.ownedWorkflows;
 
-    let teamWorkflows = [];
+    let teamWorkflows: WorkflowEntity[] = [];
 
     const tIds = user.teams?.map(team => String(team.id));
     if (tIds) {
-        teamWorkflows.concat(await getWorkflowsByTeamIds(tIds));
+        teamWorkflows = teamWorkflows.concat(await getWorkflowsByTeamIds(tIds));
     }
 
     const otIds = user.ownedTeams?.map(team => String(team.id));
     if (otIds) {
-        teamWorkflows.concat(await getWorkflowsByTeamIds(otIds));
+        teamWorkflows = teamWorkflows.concat(await getWorkflowsByTeamIds(otIds));
     }
 
-    return [...new Set([...workflows, ...ownWorkflows, ...teamWorkflows])]
+    return [...new Set([...(workflows || []), ...(ownWorkflows || []), ...(teamWorkflows || [])])]
 }
 
 export async function isWorkflowOwner(wId: string, uId: string): Promise<boolean> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
-    const entity = await repo.findOne({ where: { id: wId } });
+    const entity = await repo.findOne({
+        where: { id: wId },
+        relations: ['owners', 'ownerTeams']
+    });
 
     if (!entity) {
         return false;
     }
 
-    const num_uId = Number(uId);
-
-    const userRepo = getDataSource().getRepository(User);
-    const user = await userRepo.findOne({ where: { id: num_uId } });
+    const user = await getUserById(uId);
 
     if (!entity.owners && !entity.ownerTeams) {
-        return user && isAdmin(user!.permissions);
+        return !!(user && isAdmin(user!.permissions));
     }
 
-    return entity.owners.some(u => u.id === num_uId) ||
-        [...user.teams, ...user.ownedTeams].some(t => entity.ownerTeams.some(c => c.id === t.id));
+    const ownerMatch = (entity.owners || []).some(u => String(u.id) === String(uId));
+    const teamMatch = [...(user?.teams || []), ...(user?.ownedTeams || [])]
+        .some(t => (entity.ownerTeams || []).some(c => c.id === t.id));
+    return ownerMatch || teamMatch;
 }
 
 export async function isWorkflowUser(wId: string, uId: string): Promise<boolean> {
     await initDataSource();
     const repo = getDataSource().getRepository(WorkflowEntity);
-    const entity = await repo.findOne({ where: { id: wId } });
+    const entity = await repo.findOne({
+        where: { id: wId },
+        relations: ['owners', 'users', 'ownerTeams', 'userTeams']
+    });
 
     if (!entity) {
         return false;
     }
 
-    const num_uId = Number(uId);
-
-    const userRepo = getDataSource().getRepository(User);
-    const user = await userRepo.findOne({ where: { id: num_uId } });
+    const user = await getUserById(uId);
 
     if (!entity.owners && !entity.users && !entity.userTeams && !entity.ownerTeams) {
         return true;
     }
 
-    return [...entity.users, ...entity.owners].some(u => u.id === num_uId) ||
-        [...user.teams, ...user.ownedTeams].some(t => [...entity.userTeams, ...entity.ownerTeams].some(c => c.id === t.id));
+    const directMatch = [...(entity.users || []), ...(entity.owners || [])]
+        .some(u => String(u.id) === String(uId));
+    const teamMatch = [...(user?.teams || []), ...(user?.ownedTeams || [])]
+        .some(t => [...(entity.userTeams || []), ...(entity.ownerTeams || [])].some(c => c.id === t.id));
+    return directMatch || teamMatch;
 }
 
 export async function getPublicWorkflows(): Promise<WorkflowEntity[]> {

@@ -12,7 +12,7 @@ import { WorkflowResult } from "./workflowResult";
 
 @Entity()
 export class Workflow {
-  @PrimaryColumn()
+  @PrimaryColumn({ unique: true })
   id: string;
 
   @Column()

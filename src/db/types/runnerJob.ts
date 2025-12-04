@@ -9,7 +9,7 @@ import {
 
 @Entity()
 export class RunnerJob {
-    @PrimaryColumn()
+    @PrimaryColumn({ unique: true })
     jobId: string;
 
     @Index()

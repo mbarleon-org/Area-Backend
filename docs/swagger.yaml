@@ -21,6 +21,8 @@ tags:
     description: Module runner integration hooks
   - name: Modules
     description: Module catalog management
+  - name: Teams
+    description: Team management endpoints
   - name: Users
     description: User and profile management
 components:
@@ -206,6 +208,26 @@ components:
           type: string
         name:
           type: string
+    TeamListResponse:
+      type: object
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamSummary'
+    TeamResponse:
+      type: object
+      properties:
+        team:
+          $ref: '#/components/schemas/TeamSummary'
+    TeamSaveRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Team name
     Workflow:
       type: object
       properties:
@@ -589,6 +611,25 @@ paths:
         '500':
           description: Internal error
   /credentials:
+    get:
+      tags:
+        - Credentials
+      summary: List credentials owned by the caller
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Credential list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserCredential'
+        '404':
+          description: Not found
+        '500':
+          description: Internal error
     post:
       tags:
         - Credentials
@@ -612,6 +653,26 @@ paths:
           description: Missing fields or invalid payload
         '401':
           description: Missing or invalid token
+        '500':
+          description: Internal error
+  /credentials/all:
+    get:
+      tags:
+        - Credentials
+      summary: List all credentials (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Credential list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserCredential'
+        '404':
+          description: Not found
         '500':
           description: Internal error
   /credentials/{id}:
@@ -663,6 +724,25 @@ paths:
         '500':
           description: Internal error
   /workflows:
+    get:
+      tags:
+        - Workflows
+      summary: List workflows the caller belongs to
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workflow summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserWorkflowSummary'
+        '404':
+          description: Not found
+        '500':
+          description: Internal error
     post:
       tags:
         - Workflows
@@ -688,6 +768,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+  /workflows/all:
+    get:
+      tags:
+        - Workflows
+      summary: List all workflows (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workflow summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserWorkflowSummary'
+        '404':
+          description: Not found
+        '500':
+          description: Internal error
   /workflows/{id}:
     get:
       tags:
@@ -911,6 +1013,105 @@ paths:
           description: Invalid payload
         '403':
           description: Invalid token
+  /teams:
+    post:
+      tags:
+        - Teams
+      summary: Create or update a team definition
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSaveRequest'
+      responses:
+        '201':
+          description: Team persisted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSummary'
+        '400':
+          description: Missing fields or invalid payload
+        '401':
+          description: Missing or invalid token
+        '409':
+          description: Team with this name alredy exists
+        '500':
+          description: Internal error
+    get:
+      tags:
+        - Teams
+      summary: List teams for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamListResponse'
+        '401':
+          description: Missing or invalid token
+        '404':
+          description: Not found
+        '500':
+          description: Internal error
+  /teams/all:
+    get:
+      tags:
+        - Teams
+      summary: List all teams (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamListResponse'
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Missing admin permission
+        '404':
+          description: Not found
+        '500':
+          description: Internal error
+  /teams/{id}:
+    get:
+      tags:
+        - Teams
+      summary: Retrieve a team by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller does not belong to the requested team
+        '404':
+          description: Team not found
+        '500':
+          description: Internal error
   /users:
     post:
       tags:
@@ -1228,26 +1429,6 @@ paths:
           description: Missing username
         '404':
           description: User or picture not found
-  /users/me/workflows:
-    get:
-      tags:
-        - Users
-      summary: List workflows the caller belongs to
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Workflow summaries
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserWorkflowSummary'
-        '404':
-          description: Not found
-        '500':
-          description: Internal error
   /users/{id}/workflows:
     get:
       tags:
@@ -1274,24 +1455,6 @@ paths:
           description: Missing id
         '404':
           description: Not found
-  /users/me/credentials:
-    get:
-      tags:
-        - Users
-      summary: List credentials owned by the caller
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Credential list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserCredential'
-        '404':
-          description: Not found
   /users/{id}/credentials:
     get:
       tags:
@@ -1316,24 +1479,6 @@ paths:
                   $ref: '#/components/schemas/UserCredential'
         '400':
           description: Missing id
-        '404':
-          description: Not found
-  /users/me/teams:
-    get:
-      tags:
-        - Users
-      summary: List teams the caller belongs to
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Team list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TeamSummary'
         '404':
           description: Not found
   /users/{id}/teams:

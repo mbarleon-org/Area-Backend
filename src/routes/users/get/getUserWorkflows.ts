@@ -24,14 +24,6 @@ async function getWorkflows(id: string, res: express.Response) {
     }
 }
 
-router.get('/me/workflows', requireAuth, async (req: express.Request, res: express.Response) => {
-    const userId = req.user?.sub;
-    if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    return getWorkflows(userId, res);
-});
-
 router.get('/:id/workflows', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
     const id = req.params?.id
     if (!id) {

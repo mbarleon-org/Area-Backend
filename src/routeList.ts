@@ -1,5 +1,6 @@
 import authRouter from './routes/auth/auth';
 import docsRouter from './routes/docs/docs';
+import teamRouter from './routes/teams/teams';
 import runnerRouter from './routes/runner/runner';
 import moduleRouter from './routes/modules/modules';
 import healthzRouter from './routes/healthz/healthz';
@@ -16,7 +17,8 @@ const routes: any[] = [
     authRouter,
     usersGetRouter,
     docsRouter,
-    credentialRouter
+    credentialRouter,
+    teamRouter
 ];
 
 export default routes;

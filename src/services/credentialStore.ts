@@ -119,7 +119,7 @@ interface CredentialDefinition extends Partial<StoredCredential> {
  * @param {CredentialDefinition} def - credential payload (must contain id, type and data/credential)
  * @returns {Promise<StoredCredential>} stored credential view
  */
-export async function saveCredential(def: CredentialDefinition): Promise<StoredCredential> {
+export async function saveCredential(def: CredentialDefinition, userId?: string): Promise<StoredCredential> {
     if (!def || def.id === undefined || def.id === null) {
         throw new Error('credential id is required');
     }
@@ -132,15 +132,25 @@ export async function saveCredential(def: CredentialDefinition): Promise<StoredC
     }
 
     const repo = await getCredentialRepository();
-    const entity = repo.create({
+    let owner: User | undefined;
+    if (userId) {
+        owner = await getUserById(String(userId));
+        if (!owner) {
+            throw new Error('valid user id is required for credential creation');
+        }
+    }
+    const obj: Partial<Credential> = {
         id: String(def.id),
         name: def.name || (def as any).pretty_name || String(def.id),
         type: def.type,
         version: def.version || '1.0.0',
         description: def.description || null,
         credential: encryptObject(rawData)
-    });
-
+    };
+    if (owner) {
+        obj.owners = [owner];
+    }
+    const entity = repo.create(obj);
     const saved = await repo.save(entity);
     return mapEntityToStoredCredential(saved);
 }
@@ -154,7 +164,7 @@ export async function getCredentialsByTeamId(id: string) {
     const creds = team.credentials;
     const ownCreds = team.ownedCredentials;
 
-    return [...new Set([...creds, ...ownCreds])];
+    return [...new Set([...(creds || []), ...(ownCreds || [])])];
 }
 
 export async function getCredentialsByTeamIds(ids: string[]) {
@@ -162,15 +172,16 @@ export async function getCredentialsByTeamIds(ids: string[]) {
         return [];
     }
 
-    let creds = []
-
-    for (const id in ids) {
-        creds = [...new Set([...creds, ...(await getCredentialsByTeamId(id))])];
+    let creds: Credential[] = [];
+    for (const id of ids) {
+        const teamCreds = await getCredentialsByTeamId(id);
+        creds = [...new Set([...(creds || []), ...(teamCreds || [])])];
     }
     return creds;
 }
 
 export async function getCredentialsByUserId(id: string) {
+    await initDataSource();
     const user = await getUserById(id);
     if (!user) {
         return [];
@@ -179,61 +190,65 @@ export async function getCredentialsByUserId(id: string) {
     const creds = user.credentials;
     const ownCreds = user.ownedCredentials;
 
-    let teamCreds = [];
+    let teamCreds: Credential[] = [];
 
     const tIds = user.teams?.map(team => String(team.id));
     if (tIds) {
-        teamCreds.concat(await getCredentialsByTeamIds(tIds));
+        teamCreds = teamCreds.concat(await getCredentialsByTeamIds(tIds));
     }
 
     const otIds = user.ownedTeams?.map(team => String(team.id));
     if (otIds) {
-        teamCreds.concat(await getCredentialsByTeamIds(otIds));
+        teamCreds = teamCreds.concat(await getCredentialsByTeamIds(otIds));
     }
 
-    return [...new Set([...creds, ...ownCreds, ...teamCreds])]
+    return [...new Set([...(creds || []), ...(ownCreds || []), ...(teamCreds || [])])]
 }
 
 export async function isCredentialOwner(cId: string, uId: string): Promise<boolean> {
     const repo = await getCredentialRepository();
-    const entity = await repo.findOne({ where: { id: cId } });
+    const entity = await repo.findOne({
+        where: { id: cId },
+        relations: ['owners', 'ownerTeams']
+    });
 
     if (!entity) {
         return false;
     }
 
-    const num_uId = Number(uId);
-
-    const userRepo = getDataSource().getRepository(User);
-    const user = await userRepo.findOne({ where: { id: num_uId } });
-
+    const user = await getUserById(uId);
     if (!entity.owners && !entity.ownerTeams) {
-        return user && isAdmin(user!.permissions);
+        return !!(user && isAdmin(user!.permissions));
     }
 
-    return entity.owners.some(u => u.id === num_uId) ||
-        [...user.teams, ...user.ownedTeams].some(t => entity.ownerTeams.some(c => c.id === t.id));
+    const ownerMatch = (entity.owners || []).some(u => String(u.id) === String(uId));
+    const teamMatch = [...(user?.teams || []), ...(user?.ownedTeams || [])]
+        .some(t => (entity.ownerTeams || []).some(c => c.id === t.id));
+    return ownerMatch || teamMatch;
 }
 
 export async function isCredentialUser(cId: string, uId: string): Promise<boolean> {
     const repo = await getCredentialRepository();
-    const entity = await repo.findOne({ where: { id: cId } });
+    const entity = await repo.findOne({
+        where: { id: cId },
+        relations: ['owners', 'users', 'ownerTeams', 'userTeams']
+    });
 
     if (!entity) {
         return false;
     }
 
-    const num_uId = Number(uId);
-
-    const userRepo = getDataSource().getRepository(User);
-    const user = await userRepo.findOne({ where: { id: num_uId } });
+    const user = await getUserById(uId);
 
     if (!entity.owners && !entity.users && !entity.userTeams && !entity.ownerTeams) {
         return true;
     }
 
-    return [...entity.users, ...entity.owners].some(u => u.id === num_uId) ||
-        [...user.teams, ...user.ownedTeams].some(t => [...entity.userTeams, ...entity.ownerTeams].some(c => c.id === t.id));
+    const directMatch = [...(entity.users || []), ...(entity.owners || [])]
+        .some(u => String(u.id) === String(uId));
+    const teamMatch = [...(user?.teams || []), ...(user?.ownedTeams || [])]
+        .some(t => [...(entity.userTeams || []), ...(entity.ownerTeams || [])].some(c => c.id === t.id));
+    return directMatch || teamMatch;
 }
 
 export async function getPublicCredentials(): Promise<StoredCredential[]> {
@@ -249,4 +264,11 @@ export async function getPublicCredentials(): Promise<StoredCredential[]> {
             return !(hasOwners || hasUsers || hasUserTeams || hasOwnerTeams);
         })
         .map(entity => mapEntityToStoredCredential(entity));
+}
+
+export async function listCredentials(): Promise<StoredCredential[]> {
+    const repo = await getCredentialRepository();
+    const entities = await repo.find();
+
+    return entities.map(entity => mapEntityToStoredCredential(entity));
 }

@@ -84,7 +84,17 @@ export async function getUserByUsername(username: string): Promise<any | null> {
 export async function getUserById(id: string): Promise<any | null> {
     const ds: any = getDataSource();
     const repo: any = ds.getRepository(User);
-    return repo.findOne({ where: { id: Number(id) } });
+    return repo.findOne({
+        where: { id: Number(id) },
+        relations: [
+            'teams',
+            'ownedTeams',
+            'workflows',
+            'ownedWorkflows',
+            'credentials',
+            'ownedCredentials'
+        ]
+    });
 }
 
 /**
