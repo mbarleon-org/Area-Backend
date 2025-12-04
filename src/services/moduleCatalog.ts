@@ -7,12 +7,24 @@ import { loadModules } from '../modules/registry';
  *
  * @returns {string} absolute path to the modules directory
  */
-function resolveModulesDir(): string {
+export async function resolveModulesDir(): Promise<string> {
     const distPath = path.resolve(process.cwd(), 'dist', 'modules');
-    if (require('fs').existsSync(distPath)) {
+    if (await require('fs').existsSync(distPath)) {
         return distPath;
     }
     const srcPath = path.resolve(process.cwd(), 'src', 'modules');
+    if (await require('fs').existsSync(srcPath)) {
+        return srcPath;
+    }
+    const relativeDistPath = path.resolve(__dirname, '..', 'modules');
+    if (await require('fs').existsSync(relativeDistPath)) {
+        return relativeDistPath;
+    }
+    const relativeSrcPath = path.resolve(__dirname, '..', 'modules');
+    if (await require('fs').existsSync(relativeSrcPath)) {
+        return relativeSrcPath;
+    }
+
     return srcPath;
 }
 
@@ -21,6 +33,6 @@ function resolveModulesDir(): string {
  *
  * @returns {any} module catalog object returned by `loadModules`
  */
-export function loadModuleCatalog(): any {
-    return loadModules(resolveModulesDir());
+export async function loadModuleCatalog(): Promise<any> {
+    return loadModules(await resolveModulesDir());
 }

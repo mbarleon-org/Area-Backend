@@ -758,6 +758,18 @@ paths:
                 $ref: '#/components/schemas/Workflow'
         '404':
           description: Workflow not found
+  /modules:
+    get:
+      tags:
+        - Modules
+      summary: Retrieve the module catalog (unauthenticated)
+      responses:
+        '200':
+          description: Module catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModulesResponse'
   /modules/reload:
     get:
       tags:
@@ -828,12 +840,8 @@ paths:
         - Runner
       summary: Retrieve the module catalog (unauthenticated)
       responses:
-        '200':
-          description: Module catalog
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModulesResponse'
+        '301':
+          description: Module catalog (redirected to `/modules`)
   /runner/modules/manifest:
     get:
       tags:

@@ -4,6 +4,7 @@ import { CONFIG } from '../config.js';
 import { validateWorkflow } from './loader';
 import { loadModules } from '../modules/registry';
 import { RegisteredRoute, ScheduledJobInfo } from './types';
+import { resolveModulesDir } from '../services/moduleCatalog.js';
 import { listWorkflows, seedWorkflowsFromDir } from '../services/workflowStore.js';
 
 
@@ -27,21 +28,6 @@ function unregisterRoute(app: any, routePath: string): void {
             stack.splice(i, 1);
         }
     }
-}
-
-/**
- * Resolve modules directory using common build layouts.
- *
- * @param {string} cwd - Current working directory to resolve from
- * @param {any} options - Options that may contain `modulesDir`
- * @returns {string} the resolved modules directory path
- */
-export function resolveModulesDir(cwd: string, options: any): string {
-    return options.modulesDir ||
-        (fs.existsSync(path.join(cwd, 'dist', 'src', 'modules')) ? path.join(cwd, 'dist', 'src', 'modules')
-            : fs.existsSync(path.join(cwd, 'dist', 'modules')) ? path.join(cwd, 'dist', 'modules')
-                : fs.existsSync(path.join(cwd, 'src', 'modules')) ? path.join(cwd, 'src', 'modules')
-                    : path.join(cwd, 'modules'));
 }
 
 /**
@@ -297,7 +283,7 @@ export function buildRegistrars(app: any, wf: any, trig: any, usedPaths: Set<str
 export async function registerWorkflows(app: any, options: any = {}): Promise<{ registered: RegisteredRoute[]; scheduled: ScheduledJobInfo[]; unregisterAll: UnregisterFn }> {
     const cwd = options.cwd || process.cwd();
 
-    const modulesDir = resolveModulesDir(cwd, options);
+    const modulesDir = await resolveModulesDir();
     const registry = loadModules(modulesDir);
 
     const registered: RegisteredRoute[] = [];

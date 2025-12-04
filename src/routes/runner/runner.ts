@@ -5,6 +5,7 @@ import { CONFIG } from '../../config';
 import { listModuleFiles } from '../../services/moduleFiles.js';
 import { verifyRunnerToken } from '../../services/runnerAuth.js';
 import { loadModuleCatalog } from '../../services/moduleCatalog.js';
+import { resolveModulesDir } from '../../services/moduleCatalog.js';
 import { getCredentialsByIds } from '../../services/credentialStore.js';
 import { recordWorkflowResult } from '../../services/workflowResults.js';
 import { getRunnerJob, updateRunnerJob } from '../../services/runnerQueue.js';
@@ -121,20 +122,8 @@ async function postCredentialsHandler(req: express.Request, res: express.Respons
  * @param {express.Response} res - Express response
  * @returns {express.Response} JSON response with `modules`
  */
-function getModulesHandler(_req: express.Request, res: express.Response): any {
-    const registry = loadModuleCatalog();
-    return res.json({ modules: registry.modules || {} });
-}
-
-/**
- * Resolve the modules base directory by preferring the built `dist` path then falling back to `src`.
- *
- * @returns {string} the resolved modules base directory
- */
-function resolveModulesBaseDir(): string {
-    const modulesDir = path.resolve(process.cwd(), 'dist', 'modules');
-    const fallbackDir = path.resolve(process.cwd(), 'src', 'modules');
-    return fs.existsSync(modulesDir) ? modulesDir : fallbackDir;
+async function getModulesHandler(_req: express.Request, res: express.Response): Promise<any> {
+    return res.redirect(301, `${CONFIG.BASE_PATH}/modules`);
 }
 
 /**
@@ -145,8 +134,8 @@ function resolveModulesBaseDir(): string {
  * @param {express.Response} res - Express response
  * @returns {express.Response} JSON response with `files`
  */
-function getModulesManifestHandler(_req: express.Request, res: express.Response): any {
-    const baseDir = resolveModulesBaseDir();
+async function getModulesManifestHandler(_req: express.Request, res: express.Response): Promise<any> {
+    const baseDir = await resolveModulesDir();
     if (!fs.existsSync(baseDir)) {
         return res.json({ files: [] });
     }
