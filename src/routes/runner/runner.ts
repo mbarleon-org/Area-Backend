@@ -1,10 +1,8 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import * as express from 'express';
 import { CONFIG } from '../../config';
 import { listModuleFiles } from '../../services/moduleFiles.js';
 import { verifyRunnerToken } from '../../services/runnerAuth.js';
-import { loadModuleCatalog } from '../../services/moduleCatalog.js';
 import { resolveModulesDir } from '../../services/moduleCatalog.js';
 import { getCredentialsByIds } from '../../services/credentialStore.js';
 import { recordWorkflowResult } from '../../services/workflowResults.js';
@@ -178,11 +176,19 @@ async function postCallbackHandler(req: express.Request, res: express.Response):
     return res.json({ ok: true });
 }
 
+(async () => {
+  const modulesDir = await resolveModulesDir();
+
+  router.use(
+    '/runner/modules/files',
+    authenticateRunner,
+    express.static(modulesDir)
+  );
+})();
+
 router.get('/runner/workflows/:id', authenticateRunner, getWorkflowHandler);
 router.post('/runner/credentials', authenticateRunner, postCredentialsHandler);
 router.get('/runner/modules/manifest', authenticateRunner, getModulesManifestHandler);
-router.use('/runner/modules/files', authenticateRunner, express.static(path.resolve(process.cwd(), 'dist', 'modules')));
-router.use('/runner/modules/files', authenticateRunner, express.static(path.resolve(process.cwd(), 'src', 'modules')));
 router.get('/runner/modules', getModulesHandler);
 router.post('/runner/callback', authenticateRunner, postCallbackHandler);
 
