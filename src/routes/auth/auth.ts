@@ -160,7 +160,7 @@ router.post('/auth/login', async (req: express.Request, res: express.Response) =
 
         return res.status(200).json(result);
     } catch (err: any) {
-        if (err.message === "Invalid credentials") {
+        if (err.message.startsWith("Invalid ")) {
             return res.status(401).json({ error: "Unauthorized" });
         }
         return res.status(500).json({ error: "Internal Server Error" });
