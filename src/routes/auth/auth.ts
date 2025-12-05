@@ -15,6 +15,8 @@ import { getUserByEmail, getUserById, getUserByUsername } from '../../services/u
 
 const router = express.Router();
 
+const passwordPattern = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
+
 async function resetPassword(id: string, getFct: (field: string) => Promise<User>, res: express.Response) {
     try {
         if (!CONFIG.CHECK_USER_EMAIL) {
@@ -67,8 +69,12 @@ router.post('/auth/set_password', async (req: express.Request, res: express.Resp
         const decoded = jwt.verify(token, CONFIG.JWT_SECRET);
 
         const { password, context } = req.body;
+
         if (!password) {
             return res.status(400).json({ error: "Missing password" });
+        }
+        if (password.length < 8 || !passwordPattern.test(password)) {
+            return res.status(400).json({ error: "Invalid password"})
         }
 
         const userId = await authService.setPassword(password, decoded, context);
@@ -99,6 +105,19 @@ router.post('/auth/register', async (req: express.Request, res: express.Response
         if (!email || (!password && !CONFIG.CHECK_USER_EMAIL) || !username) {
             return res.status(400).json({ error: 'Email and password required' });
         }
+
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
+
+        if (password && (password.length < 8 || !passwordPattern.test(password))) {
+            return res.status(400).json({ error: "Invalid password"})
+        }
+        if (username.includes('@')) {
+            return res.status(400).json({ error: "Invalid username"})
+        }
+        if (!emailPattern.test(email)) {
+            return res.status(400).json({ error: "Invalid email"})
+        }
+
         const userId = await authService.register(email, username, password);
         if (CONFIG.CHECK_USER_EMAIL) {
             return userId === "OK" ?
@@ -123,16 +142,16 @@ router.post('/auth/register', async (req: express.Request, res: express.Response
  */
 router.post('/auth/login', async (req: express.Request, res: express.Response) => {
     try {
-        const { username, email, password } = req.body;
-        if ((!email && !username) || !password) {
+        const { user, password } = req.body;
+        if (!user || !password) {
             return res.status(400).json({ error: 'Email and password required' });
         }
 
         let result: any;
-        if (email) {
-            result = await authService.loginByEmail(email, password);
+        if (user.includes('@')) {
+            result = await authService.loginByEmail(user, password);
         } else {
-            result = await authService.loginByUsername(email, password);
+            result = await authService.loginByUsername(user, password);
         }
 
         if (!result) {
@@ -141,7 +160,7 @@ router.post('/auth/login', async (req: express.Request, res: express.Response) =
 
         return res.status(200).json(result);
     } catch (err: any) {
-        if (err.message === "Invalid email or password") {
+        if (err.message === "Invalid credentials") {
             return res.status(401).json({ error: "Unauthorized" });
         }
         return res.status(500).json({ error: "Internal Server Error" });
