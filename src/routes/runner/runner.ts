@@ -3,7 +3,7 @@ import * as express from 'express';
 import { CONFIG } from '../../config';
 import { listModuleFiles } from '../../services/moduleFiles.js';
 import { verifyRunnerToken } from '../../services/runnerAuth.js';
-import { resolveModulesDir } from '../../services/moduleCatalog.js';
+import { resolveApiDir, resolveModulesDir } from '../../services/moduleCatalog.js';
 import { getCredentialsByIds } from '../../services/credentialStore.js';
 import { recordWorkflowResult } from '../../services/workflowResults.js';
 import { getRunnerJob, updateRunnerJob } from '../../services/runnerQueue.js';
@@ -177,13 +177,24 @@ async function postCallbackHandler(req: express.Request, res: express.Response):
 }
 
 (async () => {
-  const modulesDir = await resolveModulesDir();
+    const apiDir = await resolveApiDir();
+    const modulesDir = await resolveModulesDir();
 
-  router.use(
-    '/runner/modules/files',
-    authenticateRunner,
-    express.static(modulesDir)
-  );
+    router.use(
+        '/runner/modules/files',
+        authenticateRunner,
+        express.static(modulesDir)
+    );
+    router.use(
+        '/runner/base/modules',
+        authenticateRunner,
+        express.static(modulesDir)
+    );
+    router.use(
+        '/runner/base/api',
+        authenticateRunner,
+        express.static(apiDir)
+    );
 })();
 
 router.get('/runner/workflows/:id', authenticateRunner, getWorkflowHandler);

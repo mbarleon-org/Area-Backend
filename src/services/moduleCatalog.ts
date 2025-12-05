@@ -29,6 +29,33 @@ export async function resolveModulesDir(): Promise<string> {
 }
 
 /**
+ * Resolve the api directory used by the runtime.
+ * Prefers the built `dist/api` directory when present, otherwise falls back to `src/api`.
+ *
+ * @returns {string} absolute path to the api directory
+ */
+export async function resolveApiDir(): Promise<string> {
+    const distPath = path.resolve(process.cwd(), 'dist', 'api');
+    if (await require('fs').existsSync(distPath)) {
+        return distPath;
+    }
+    const srcPath = path.resolve(process.cwd(), 'src', 'api');
+    if (await require('fs').existsSync(srcPath)) {
+        return srcPath;
+    }
+    const relativeDistPath = path.resolve(__dirname, '..', 'api');
+    if (await require('fs').existsSync(relativeDistPath)) {
+        return relativeDistPath;
+    }
+    const relativeSrcPath = path.resolve(__dirname, '..', 'api');
+    if (await require('fs').existsSync(relativeSrcPath)) {
+        return relativeSrcPath;
+    }
+
+    return srcPath;
+}
+
+/**
  * Load the module catalog by reading the modules directory and delegating to the registry loader.
  *
  * @returns {any} module catalog object returned by `loadModules`

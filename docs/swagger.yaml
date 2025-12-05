@@ -978,6 +978,58 @@ paths:
                 format: binary
         '404':
           description: File not found
+  /runner/base/modules/{filePath}:
+    get:
+      tags:
+        - Runner
+      summary: Download runner base module assets
+      description: Serves the canonical module runtime files runners must download before executing workflows.
+      security:
+        - RunnerJobId: []
+          RunnerToken: []
+      parameters:
+        - in: path
+          name: filePath
+          required: true
+          schema:
+            type: string
+          description: Relative path inside the modules bundle (e.g. `modules/_module.spec.js`)
+      responses:
+        '200':
+          description: File contents
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+  /runner/base/api/{filePath}:
+    get:
+      tags:
+        - Runner
+      summary: Download runner base API assets
+      description: Serves the shared API helper files required by the runner runtime.
+      security:
+        - RunnerJobId: []
+          RunnerToken: []
+      parameters:
+        - in: path
+          name: filePath
+          required: true
+          schema:
+            type: string
+          description: Relative path inside the API bundle (e.g. `api/engine.js`)
+      responses:
+        '200':
+          description: File contents
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
   /runner/callback:
     post:
       tags:
