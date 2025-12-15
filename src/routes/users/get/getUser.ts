@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { isAdmin } from '../../../services/permissions';
+import { hasPerms, PERMISSIONS } from '../../../services/permissions';
 import { requireAdmin, requireAuth } from '../../../middleware/user';
 import { getUserById, getUserByEmail, getUserByUsername } from '../../../services/userStore';
 
@@ -16,7 +16,7 @@ async function getUser(id: string, res: express.Response) {
             id: user.id,
             email: user.email,
             username: user.username,
-            isAdmin: isAdmin(user.permissions),
+            isAdmin: hasPerms(user.permissions, PERMISSIONS.ADMIN),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         });

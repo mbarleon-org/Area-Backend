@@ -1,6 +1,6 @@
 import * as express from 'express';
-import { isAdmin } from '../../../services/permissions';
 import { requireAuth, requireAdmin } from '../../../middleware/user';
+import { hasPerms, PERMISSIONS } from '../../../services/permissions';
 import { getUserById, getUserByEmail, getUserByUsername, updateUserById } from '../../../services/userStore';
 
 const router = express.Router();
@@ -96,7 +96,7 @@ async function applyUserUpdate(targetId: string, body: UpdateableFields, canEdit
             id: updated.id,
             email: updated.email,
             username: updated.username,
-            isAdmin: isAdmin(updated.permissions),
+            isAdmin: hasPerms(updated.permissions, PERMISSIONS.ADMIN),
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
         });
@@ -117,7 +117,7 @@ router.put('/me', requireAuth, async (req: express.Request, res: express.Respons
             return res.status(404).json({ error: 'User not found' });
         }
 
-        return applyUserUpdate(actorId, req.body, isAdmin(actor.permissions), res);
+        return applyUserUpdate(actorId, req.body, hasPerms(actor.permissions, PERMISSIONS.ADMIN), res);
     } catch (err: any) {
         return res.status(500).json({ error: 'Internal Server Error' });
     }

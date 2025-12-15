@@ -5,7 +5,7 @@ import { getTeamByID } from './teamStore.js';
 import { Credential } from '../db/types/credential.js';
 import { getDataSource, initDataSource } from './dataSource.js';
 import { User } from '../db/types/user.js';
-import { isAdmin } from './permissions.js';
+import { hasPerms, PERMISSIONS } from './permissions.js';
 
 export interface StoredCredential {
     id: string;
@@ -218,7 +218,7 @@ export async function isCredentialOwner(cId: string, uId: string): Promise<boole
 
     const user = await getUserById(uId);
     if (!entity.owners && !entity.ownerTeams) {
-        return !!(user && isAdmin(user!.permissions));
+        return !!(user && hasPerms(user!.permissions, PERMISSIONS.ADMIN));
     }
 
     const ownerMatch = (entity.owners || []).some(u => String(u.id) === String(uId));
