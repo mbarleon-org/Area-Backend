@@ -58,8 +58,8 @@ export async function resolveApiDir(): Promise<string> {
 /**
  * Load the module catalog by reading the modules directory and delegating to the registry loader.
  *
- * @returns {any} module catalog object returned by `loadModules`
+ * @returns {Record<string, any>} module catalog object returned by `loadModules`
  */
-export async function loadModuleCatalog(): Promise<any> {
+export async function loadModuleCatalog(): Promise<Record<string, any>> {
     return loadModules(await resolveModulesDir());
 }

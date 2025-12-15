@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { isAdmin } from '../../services/permissions.js';
+import { hasPerms, PERMISSIONS } from '../../services/permissions.js';
 import { getUserById } from '../../services/userStore.js';
 import { requireAdmin, requireAuth } from '../../middleware/user.js';
 import { getTeamByID, getTeamByName, getTeamsByUserID, isTeamMember, listTeams, saveTeam } from '../../services/teamStore.js';
@@ -59,7 +59,7 @@ async function getTeamByIdHandler(req: express.Request, res: express.Response): 
         if (!req.params.id) {
             return res.status(400).json({ error: 'Invalid request' });
         }
-        if (!(await isTeamMember(req.user!.sub, req.params.id)) && !isAdmin((await getUserById(req.user!.sub))?.permissions || 0)) {
+        if (!(await isTeamMember(req.user!.sub, req.params.id)) && !hasPerms((await getUserById(req.user!.sub))?.permissions || 0, PERMISSIONS.ADMIN)) {
             return res.status(403).json({ error: "Forbidden" });
         }
         const team = await getTeamByID(req.params.id);

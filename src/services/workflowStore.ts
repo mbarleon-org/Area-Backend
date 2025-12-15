@@ -5,7 +5,7 @@ import * as path from 'path';
 import { getUserById } from './userStore.js';
 import { getTeamByID } from './teamStore.js';
 import { User } from '../db/types/user.js';
-import { isAdmin } from './permissions.js';
+import { hasPerms, PERMISSIONS } from './permissions.js';
 
 export interface StoredWorkflow {
     id: string;
@@ -273,7 +273,7 @@ export async function isWorkflowOwner(wId: string, uId: string): Promise<boolean
     const user = await getUserById(uId);
 
     if (!entity.owners && !entity.ownerTeams) {
-        return !!(user && isAdmin(user!.permissions));
+        return !!(user && hasPerms(user!.permissions, PERMISSIONS.ADMIN));
     }
 
     const ownerMatch = (entity.owners || []).some(u => String(u.id) === String(uId));

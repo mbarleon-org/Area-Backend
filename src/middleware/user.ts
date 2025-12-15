@@ -1,7 +1,7 @@
 import { CONFIG } from '../config';
 import * as jwt from 'jsonwebtoken';
 import { getUserById } from '../services/userStore';
-import { isAdmin } from '../services/permissions';
+import { hasPerms, PERMISSIONS } from '../services/permissions';
 import { Request, Response, NextFunction } from 'express';
 
 declare global {
@@ -38,7 +38,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
     try {
-        if (!isAdmin((await getUserById(req.user.sub))?.permissions || 0)) {
+        if (!hasPerms((await getUserById(req.user.sub))?.permissions || 0, PERMISSIONS.ADMIN)) {
             return res.status(403).json({ error: "Forbidden" });
         }
         next();
