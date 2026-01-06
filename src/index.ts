@@ -1,6 +1,6 @@
-import 'reflect-metadata';
 import 'dotenv/config';
-import * as cors from 'cors';
+import 'reflect-metadata';
+import { APP } from './app';
 import { CONFIG } from './config';
 import * as express from 'express';
 import routes from './routeList.js';
@@ -20,18 +20,6 @@ function validateConfig(): void {
             throw new Error(`Fatal Error: Config value not set (testing ${key}).`);
         }
     });
-}
-
-/**
- * Create and configure the express application.
- *
- * @returns {express.Express} configured express app
- */
-function createApp(): express.Express {
-    const app = express();
-    app.use(express.json());
-    app.use(cors());
-    return app;
 }
 
 /**
@@ -75,18 +63,16 @@ async function bootstrap(): Promise<void> {
 
     await importLegacyFiles();
 
-    const app = createApp();
-
-    mountRoutes(app);
+    mountRoutes(APP);
 
     try {
-        await registerWorkflows(app, {});
+        await registerWorkflows(APP, {});
         console.log('[startup] workflows registered');
     } catch (err) {
         console.error('[startup] failed to register workflows', err);
     }
 
-    startServer(app);
+    startServer(APP);
 }
 
 bootstrap().catch(err => {
