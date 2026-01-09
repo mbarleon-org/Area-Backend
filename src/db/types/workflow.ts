@@ -1,10 +1,10 @@
 import {
-    Entity,
-    PrimaryColumn,
-    Column,
-    ManyToMany,
-    JoinTable,
-    OneToMany
+  Entity,
+  PrimaryColumn,
+  Column,
+  ManyToMany,
+  JoinTable,
+  OneToMany
 } from "typeorm";
 import { User } from "./user";
 import { Team } from "./team";
@@ -57,4 +57,10 @@ export class Workflow {
 
   @OneToMany(() => WorkflowResult, (wres) => wres.workflow)
   results: WorkflowResult[];
+
+  @Column({
+    type: "jsonb",
+    default: () => "'{}'::jsonb"
+  })
+  data: JSON;
 }

@@ -1,5 +1,6 @@
 import * as express from 'express';
 import { requireAdmin, requireAuth } from '../../middleware/user.js';
+import { registerWorkflows } from '../../api/workflowRegistration.js';
 import { getPublicWorkflows, getWorkflowsByUserId, isWorkflowOwner, isWorkflowUser, listWorkflows, loadWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
 
 const router = express.Router();
@@ -83,6 +84,7 @@ async function postWorkflowHandler(req: express.Request, res: express.Response):
             return res.status(401).json({ error: 'Unauthorized' });
         }
         const saved = await saveWorkflow(req.body, req.user!.sub);
+        registerWorkflows({});
         return res.status(201).json(saved);
     } catch (err: any) {
         return res.status(400).json({ error: err?.message || 'invalid_workflow' });

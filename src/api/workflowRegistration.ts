@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { App } from '../app.js';
 import { CONFIG } from '../config.js';
 import { validateWorkflow } from './loader';
 import { loadModules } from '../modules/registry';
@@ -17,8 +18,9 @@ type UnregisterFn = () => void;
  * @param {string} routePath - Path to remove from the app router
  * @returns {void}
  */
-function unregisterRoute(app: any, routePath: string): void {
-    const stack = app._router && app._router.stack;
+function unregisterRoute(routePath: string): void {
+    const _router = App.getInstance<App>().getRouter();
+    const stack = _router && _router.stack;
     if (!stack || !Array.isArray(stack)) {
         return;
     }
@@ -216,7 +218,6 @@ export function discoverTriggerModule(trigType: string, triggerModules: Record<s
  * Build registrars object for a given workflow and trigger.
  * The returned object exposes methods used by trigger modules to register routes and schedule jobs.
  *
- * @param {any} app - Express application instance
  * @param {any} wf - Workflow object being registered
  * @param {any} trig - Trigger definition within the workflow
  * @param {Set<string>} usedPaths - Set tracking mounted route paths to detect duplicates
@@ -225,7 +226,7 @@ export function discoverTriggerModule(trigType: string, triggerModules: Record<s
  * @param {ScheduledJobInfo[]} scheduledJobs - Array to push scheduled job info into
  * @returns {any} registrars object with methods: `mountRouter`, `scheduleJob`, `registerImapListener`, `registerQueueConsumer`, `mountWebsocket`
  */
-export function buildRegistrars(app: any, wf: any, trig: any, usedPaths: Set<string>, duplicatePaths: string[], registered: RegisteredRoute[], scheduledJobs: ScheduledJobInfo[]): any {
+export function buildRegistrars(wf: any, trig: any, usedPaths: Set<string>, duplicatePaths: string[], registered: RegisteredRoute[], scheduledJobs: ScheduledJobInfo[]): any {
     const basePrefix = (CONFIG && CONFIG.BASE_PATH && CONFIG.BASE_PATH !== '/') ? String(CONFIG.BASE_PATH).replace(/\/$/, '') : '';
     const registrars: any = {};
     registrars.mountRouter = (routePath: string, router: any) => {
@@ -237,7 +238,7 @@ export function buildRegistrars(app: any, wf: any, trig: any, usedPaths: Set<str
             duplicatePaths.push(mountedPath);
             return null;
         }
-        app.use(mountedPath, router);
+        App.getInstance<App>().use(mountedPath, router);
         const info = { workflow: wf.id, path: mountedPath, router } as RegisteredRoute;
         registered.push(info);
         usedPaths.add(mountedPath);
@@ -276,11 +277,10 @@ export function buildRegistrars(app: any, wf: any, trig: any, usedPaths: Set<str
  * This function loads trigger modules, validates workflows, mounts routes and schedules jobs.
  * It has been factored into smaller helpers for readability and testability but preserves original behavior.
  *
- * @param {any} app - Express application instance
  * @param {any} [options={}] - Optional configuration: `cwd`, `modulesDir`, `workflowsDir`, `seedFromDir`
  * @returns {Promise<{ registered: RegisteredRoute[]; scheduled: ScheduledJobInfo[]; unregisterAll: UnregisterFn }>} Resolves with registration metadata and an `unregisterAll` function
  */
-export async function registerWorkflows(app: any, options: any = {}): Promise<{ registered: RegisteredRoute[]; scheduled: ScheduledJobInfo[]; unregisterAll: UnregisterFn }> {
+export async function registerWorkflows(options: any = {}): Promise<{ registered: RegisteredRoute[]; scheduled: ScheduledJobInfo[]; unregisterAll: UnregisterFn }> {
     const cwd = options.cwd || process.cwd();
 
     const modulesDir = await resolveModulesDir();
@@ -326,10 +326,10 @@ export async function registerWorkflows(app: any, options: any = {}): Promise<{ 
                 throw new Error(`no trigger module found for type ${trig.type}; registration is mandatory`);
             }
 
-            const registrars = buildRegistrars(app, wf, trig, usedPaths, duplicatePaths, registered, scheduledJobs);
+            const registrars = buildRegistrars(wf, trig, usedPaths, duplicatePaths, registered, scheduledJobs);
 
             try {
-                const res = trigModule.register(app, wf, trig, actionsList, registry, options, registrars);
+                const res = trigModule.register(wf, trig, actionsList, registry, options, registrars);
                 if (res && res.job) {
                     registrars.scheduleJob(res);
                 }
@@ -347,7 +347,8 @@ export async function registerWorkflows(app: any, options: any = {}): Promise<{ 
     const unregisterAll = () => {
         for (const r of registered) {
             if ((r as any).router) {
-                const stack = app._router && app._router.stack;
+                const _router = App.getInstance<App>().getRouter();
+                const stack = _router && _router.stack;
                 if (stack && Array.isArray(stack)) {
                     for (let i = stack.length - 1; i >= 0; i--) {
                         const layer = stack[i];
@@ -357,7 +358,7 @@ export async function registerWorkflows(app: any, options: any = {}): Promise<{ 
                     }
                 }
             } else {
-                unregisterRoute(app, r.path);
+                unregisterRoute(r.path);
             }
         }
         for (const j of scheduledJobs as any) {

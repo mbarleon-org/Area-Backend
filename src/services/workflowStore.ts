@@ -15,6 +15,7 @@ export interface StoredWorkflow {
     description?: string;
     triggers?: any[];
     actions?: any[];
+    data?: JSON;
     [key: string]: any;
 }
 /**
@@ -76,7 +77,8 @@ export async function persistWorkflowDefinition(def: StoredWorkflow, user?: User
         description: def.description || '',
         enabled: !!def.enabled,
         triggers: def.triggers || [],
-        actions: def.actions || []
+        actions: def.actions || [],
+        data: def.data || JSON.parse('{}')
     };
     if (user) {
         payload.owners = [user];

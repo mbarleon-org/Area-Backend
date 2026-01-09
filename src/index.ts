@@ -1,8 +1,7 @@
-import 'reflect-metadata';
 import 'dotenv/config';
-import * as cors from 'cors';
+import 'reflect-metadata';
+import { App } from './app';
 import { CONFIG } from './config';
-import * as express from 'express';
 import routes from './routeList.js';
 import { importLegacyFiles } from './legacy/importAll';
 import { initDataSource } from './services/dataSource.js';
@@ -23,26 +22,14 @@ function validateConfig(): void {
 }
 
 /**
- * Create and configure the express application.
- *
- * @returns {express.Express} configured express app
- */
-function createApp(): express.Express {
-    const app = express();
-    app.use(express.json());
-    app.use(cors());
-    return app;
-}
-
-/**
  * Mount application routes under the configured `BASE_PATH`.
  *
  * @param {express.Express} app - the express application
  * @returns {void}
  */
-function mountRoutes(app: express.Express): void {
+function mountRoutes(): void {
     routes.forEach(route => {
-        app.use(CONFIG.BASE_PATH, route);
+        App.getInstance<App>().use(CONFIG.BASE_PATH, route);
     });
 }
 
@@ -52,12 +39,12 @@ function mountRoutes(app: express.Express): void {
  * @param {express.Express} app - the express application
  * @returns {void}
  */
-function startServer(app: express.Express): void {
-    app.use((_req, res, _next) => {
+function startServer(): void {
+    App.getInstance<App>().use((_req, res, _next) => {
         res.status(404).json({ message: 'Not found' });
     });
 
-    app.listen(CONFIG.LISTEN_ADDRESS, () => {
+    App.getInstance<App>().listen(CONFIG.LISTEN_ADDRESS, () => {
         console.log('Server is running on port', CONFIG.LISTEN_ADDRESS);
     });
 }
@@ -75,18 +62,16 @@ async function bootstrap(): Promise<void> {
 
     await importLegacyFiles();
 
-    const app = createApp();
-
-    mountRoutes(app);
+    mountRoutes();
 
     try {
-        await registerWorkflows(app, {});
+        await registerWorkflows({});
         console.log('[startup] workflows registered');
     } catch (err) {
         console.error('[startup] failed to register workflows', err);
     }
 
-    startServer(app);
+    startServer();
 }
 
 bootstrap().catch(err => {
