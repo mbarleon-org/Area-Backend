@@ -84,10 +84,103 @@ export async function isTeamMember(uId: string, tId: string): Promise<boolean> {
     return ([...(team.owners || []), ...(team.users || [])].some(u => u.id === numuId));
 }
 
+export async function isTeamOwner(uId: string, tId: string): Promise<boolean> {
+    const team = await getTeamByID(tId);
+
+    if (!team) {
+        return false;
+    }
+    const numuId = Number(uId);
+    return (team.owners || []).some(u => u.id === numuId);
+}
+
 export async function getTeamByName(name: string): Promise<Team> {
     await initDataSource();
     const ds: any = getDataSource();
     const repo: any = ds.getRepository(Team);
 
     return repo.findOne({ where: { name: name }, relations: TEAM_RELATIONS });
+}
+
+export async function updateTeamById(id: string, def: StoredTeam): Promise<Team | null> {
+    if (!def?.name) {
+        throw new Error('team name is required');
+    }
+    await initDataSource();
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(Team);
+    const team = await repo.findOne({ where: { id: Number(id) } });
+    if (!team) {
+        return null;
+    }
+    team.name = def.name;
+    return repo.save(team);
+}
+
+export async function deleteTeamById(id: string): Promise<boolean> {
+    await initDataSource();
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(Team);
+    const result = await repo.delete({ id: Number(id) });
+    return Boolean(result?.affected && result.affected > 0);
+}
+
+function ensureUnique<T extends { id: number }>(items: T[] = []): T[] {
+    const seen = new Set<number>();
+    const out: T[] = [];
+    for (const item of items) {
+        if (!seen.has(item.id)) {
+            seen.add(item.id);
+            out.push(item);
+        }
+    }
+    return out;
+}
+
+export async function addUserToTeam(teamId: string, userId: string): Promise<Team | null> {
+    await initDataSource();
+    const team = await getTeamByID(teamId);
+    const user = await getUserById(userId);
+    if (!team || !user) {
+        return null;
+    }
+    team.users = ensureUnique([...(team.users || []), user]);
+    const repo = getDataSource().getRepository(Team);
+    return repo.save(team);
+}
+
+export async function addOwnerToTeam(teamId: string, userId: string): Promise<Team | null> {
+    await initDataSource();
+    const team = await getTeamByID(teamId);
+    const user = await getUserById(userId);
+    if (!team || !user) {
+        return null;
+    }
+    // promote: ensure user no longer sits in regular members
+    team.users = (team.users || []).filter(u => u.id !== user.id);
+    team.owners = ensureUnique([...(team.owners || []), user]);
+    const repo = getDataSource().getRepository(Team);
+    return repo.save(team);
+}
+
+export async function removeUserFromTeam(teamId: string, userId: string): Promise<Team | null> {
+    await initDataSource();
+    const team = await getTeamByID(teamId);
+    if (!team) {
+        return null;
+    }
+    const repo = getDataSource().getRepository(Team);
+    team.users = (team.users || []).filter(u => String(u.id) !== String(userId));
+    return repo.save(team);
+}
+
+export async function removeOwnerFromTeam(teamId: string, userId: string): Promise<Team | null> {
+    await initDataSource();
+    const team = await getTeamByID(teamId);
+    if (!team) {
+        return null;
+    }
+    const repo = getDataSource().getRepository(Team);
+    team.owners = (team.owners || []).filter(u => String(u.id) !== String(userId));
+    return repo.save(team);
 }

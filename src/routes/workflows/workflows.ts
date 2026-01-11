@@ -1,7 +1,9 @@
 import * as express from 'express';
 import { requireAdmin, requireAuth } from '../../middleware/user.js';
 import { registerWorkflows } from '../../api/workflowRegistration.js';
-import { getPublicWorkflows, getWorkflowsByUserId, isWorkflowOwner, isWorkflowUser, listWorkflows, loadWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
+import { addOwnerTeamToWorkflow, addOwnerToWorkflow, addUserTeamToWorkflow, addUserToWorkflow, deleteWorkflow, getPublicWorkflows, getWorkflowsByUserId, isWorkflowOwner, isWorkflowUser, listWorkflows, loadWorkflow, removeOwnerFromWorkflow, removeOwnerTeamFromWorkflow, removeUserFromWorkflow, removeUserTeamFromWorkflow, saveWorkflow, setWorkflowEnabled } from '../../services/workflowStore.js';
+import { getUserById } from '../../services/userStore.js';
+import { hasPerms, PERMISSIONS } from '../../services/permissions.js';
 
 const router = express.Router();
 
@@ -28,7 +30,7 @@ async function getUserWorkflowsHandler(req: express.Request, res: express.Respon
         }
         return res.status(200).json({ workflows: wfs });
     } catch (err: any) {
-        return res.status(500).json({ error: err?.message || 'Internal error'});
+        return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 }
 
@@ -40,7 +42,7 @@ async function getAllWorkflowsHandler(req: express.Request, res: express.Respons
         }
         return res.status(200).json({ workflows: wfs });
     } catch (err: any) {
-        return res.status(500).json({ error: err?.message || 'Internal error'});
+        return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 }
 
@@ -88,6 +90,64 @@ async function postWorkflowHandler(req: express.Request, res: express.Response):
         return res.status(201).json(saved);
     } catch (err: any) {
         return res.status(400).json({ error: err?.message || 'invalid_workflow' });
+    }
+}
+
+async function putWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        if (!req.user?.sub) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const workflowId = req.params?.id;
+        if (!workflowId) {
+            return res.status(400).json({ error: 'Invalid request' });
+        }
+        const existing = await loadWorkflow(workflowId);
+        if (!existing) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        const actor = await getUserById(req.user!.sub);
+        const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+        if (!(await isWorkflowOwner(workflowId, req.user!.sub)) && !isAdmin) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        if (req.body?.id && String(req.body.id) !== String(workflowId)) {
+            return res.status(400).json({ error: 'Workflow id mismatch' });
+        }
+        const saved = await saveWorkflow({ ...req.body, id: workflowId });
+        registerWorkflows({});
+        return res.status(200).json(saved);
+    } catch (err: any) {
+        return res.status(400).json({ error: err?.message || 'invalid_workflow' });
+    }
+}
+
+async function deleteWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
+    try {
+        if (!req.user?.sub) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const workflowId = req.params?.id;
+        if (!workflowId) {
+            return res.status(400).json({ error: 'Invalid request' });
+        }
+        const existing = await loadWorkflow(workflowId);
+        if (!existing) {
+            return res.status(404).json({ error: 'not found' });
+        }
+        const actor = await getUserById(req.user!.sub);
+        const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+        if (!(await isWorkflowOwner(workflowId, req.user!.sub)) && !isAdmin) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        const deleted = await deleteWorkflow(workflowId);
+        if (!deleted) {
+            return res.status(500).json({ error: 'Internal error' });
+        }
+        registerWorkflows({});
+        return res.status(200).json({ message: 'Workflow deleted' });
+    } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 }
 
@@ -140,6 +200,141 @@ router.get('/workflows', requireAuth, getUserWorkflowsHandler);
 router.get('/workflows/all', requireAuth, requireAdmin, getAllWorkflowsHandler);
 router.post('/workflows', requireAuth, postWorkflowHandler);
 router.get('/workflows/:id', requireAuth, getWorkflowHandler);
+router.put('/workflows/:id', requireAuth, putWorkflowHandler);
+router.delete('/workflows/:id', requireAuth, deleteWorkflowHandler);
+router.post('/workflows/:id/users', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const userId = req.body?.userId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await addUserToWorkflow(workflowId, userId);
+    if (!updated) return res.status(404).json({ error: 'Workflow or user not found' });
+    return res.status(200).json(updated);
+});
+
+router.delete('/workflows/:id/users/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const userId = req.params?.userId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await removeUserFromWorkflow(workflowId, userId);
+    if (!updated) return res.status(404).json({ error: 'Workflow not found' });
+    return res.status(200).json(updated);
+});
+
+router.post('/workflows/:id/owners', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const userId = req.body?.userId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await addOwnerToWorkflow(workflowId, userId);
+    if (!updated) return res.status(404).json({ error: 'Workflow or user not found' });
+    registerWorkflows({});
+    return res.status(200).json(updated);
+});
+
+router.delete('/workflows/:id/owners/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const userId = req.params?.userId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await removeOwnerFromWorkflow(workflowId, userId);
+    if (!updated) return res.status(404).json({ error: 'Workflow not found' });
+    registerWorkflows({});
+    return res.status(200).json(updated);
+});
+
+router.post('/workflows/:id/user-teams', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const teamId = req.body?.teamId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await addUserTeamToWorkflow(workflowId, teamId);
+    if (!updated) return res.status(404).json({ error: 'Workflow or team not found' });
+    registerWorkflows({});
+    return res.status(200).json(updated);
+});
+
+router.delete('/workflows/:id/user-teams/:teamId', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const teamId = req.params?.teamId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await removeUserTeamFromWorkflow(workflowId, teamId);
+    if (!updated) return res.status(404).json({ error: 'Workflow not found' });
+    registerWorkflows({});
+    return res.status(200).json(updated);
+});
+
+router.post('/workflows/:id/owner-teams', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const teamId = req.body?.teamId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await addOwnerTeamToWorkflow(workflowId, teamId);
+    if (!updated) return res.status(404).json({ error: 'Workflow or team not found' });
+    registerWorkflows({});
+    return res.status(200).json(updated);
+});
+
+router.delete('/workflows/:id/owner-teams/:teamId', requireAuth, async (req: express.Request, res: express.Response) => {
+    const actorId = req.user?.sub;
+    const workflowId = req.params?.id;
+    const teamId = req.params?.teamId;
+    if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
+    const actor = await getUserById(actorId);
+    const isAdmin = hasPerms(actor?.permissions || 0, PERMISSIONS.ADMIN);
+    if (!(await isWorkflowOwner(workflowId, actorId)) && !isAdmin) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const updated = await removeOwnerTeamFromWorkflow(workflowId, teamId);
+    if (!updated) return res.status(404).json({ error: 'Workflow not found' });
+    registerWorkflows({});
+    return res.status(200).json(updated);
+});
 router.post('/workflows/:id/enable', requireAuth, enableWorkflowHandler);
 router.post('/workflows/:id/disable', requireAuth, disableWorkflowHandler);
 

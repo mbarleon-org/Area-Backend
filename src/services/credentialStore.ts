@@ -272,3 +272,124 @@ export async function listCredentials(): Promise<StoredCredential[]> {
 
     return entities.map(entity => mapEntityToStoredCredential(entity));
 }
+
+export async function deleteCredential(id: string): Promise<boolean> {
+    const repo = await getCredentialRepository();
+    const result = await repo.delete({ id });
+    return Boolean(result?.affected && result.affected > 0);
+}
+
+function uniqueById<T extends { id: any }>(items: T[] = []): T[] {
+    const seen = new Set<string>();
+    const out: T[] = [];
+    for (const item of items) {
+        const key = String(item.id);
+        if (!seen.has(key)) {
+            seen.add(key);
+            out.push(item);
+        }
+    }
+    return out;
+}
+
+async function getCredentialEntity(id: string) {
+    const repo = await getCredentialRepository();
+    return repo.findOne({
+        where: { id },
+        relations: ['owners', 'users', 'ownerTeams', 'userTeams']
+    });
+}
+
+export async function addUserToCredential(cId: string, uId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    const user = await getUserById(uId);
+    if (!credential || !user) {
+        return null;
+    }
+    credential.users = uniqueById([...(credential.users || []), user]);
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function addOwnerToCredential(cId: string, uId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    const user = await getUserById(uId);
+    if (!credential || !user) {
+        return null;
+    }
+    credential.users = (credential.users || []).filter(u => String(u.id) !== String(user.id));
+    credential.owners = uniqueById([...(credential.owners || []), user]);
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function removeUserFromCredential(cId: string, uId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    if (!credential) {
+        return null;
+    }
+    credential.users = (credential.users || []).filter(u => String(u.id) !== String(uId));
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function removeOwnerFromCredential(cId: string, uId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    if (!credential) {
+        return null;
+    }
+    credential.owners = (credential.owners || []).filter(u => String(u.id) !== String(uId));
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function addUserTeamToCredential(cId: string, tId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    const team = await getTeamByID(tId);
+    if (!credential || !team) {
+        return null;
+    }
+    credential.userTeams = uniqueById([...(credential.userTeams || []), team]);
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function addOwnerTeamToCredential(cId: string, tId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    const team = await getTeamByID(tId);
+    if (!credential || !team) {
+        return null;
+    }
+    credential.userTeams = (credential.userTeams || []).filter(t => String(t.id) !== String(team.id));
+    credential.ownerTeams = uniqueById([...(credential.ownerTeams || []), team]);
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function removeUserTeamFromCredential(cId: string, tId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    if (!credential) {
+        return null;
+    }
+    credential.userTeams = (credential.userTeams || []).filter(t => String(t.id) !== String(tId));
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
+
+export async function removeOwnerTeamFromCredential(cId: string, tId: string): Promise<StoredCredential | null> {
+    const repo = await getCredentialRepository();
+    const credential = await getCredentialEntity(cId);
+    if (!credential) {
+        return null;
+    }
+    credential.ownerTeams = (credential.ownerTeams || []).filter(t => String(t.id) !== String(tId));
+    const saved = await repo.save(credential);
+    return mapEntityToStoredCredential(saved);
+}
