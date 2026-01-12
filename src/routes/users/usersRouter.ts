@@ -1,7 +1,8 @@
 import * as express from 'express';
 
+import getUsersRouter from './get/getUsers';
+
 import getUserRouter from './get/getUser';
-import getUsersRouter from './get/getUsers'
 import getUserImageRouter from './get/getUserImage'
 import getUserTeamsRouter from './get/getUserTeams'
 import getUserWorkflowsRouter from './get/getUserWorkflows'
@@ -14,8 +15,9 @@ import deleteUserRouter from './delete/deleteUser';
 import deleteUserImageRouter from './delete/deleteUserImage';
 
 const ROUTERS = [
-    getUserRouter,
     getUsersRouter,
+
+    getUserRouter,
     getUserImageRouter,
     getUserTeamsRouter,
     getUserWorkflowsRouter,
