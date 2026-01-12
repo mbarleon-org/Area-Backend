@@ -5,6 +5,11 @@ import { getUserById, getUserByEmail, getUserByUsername, updateUserById } from '
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 type UpdateableFields = {
     username?: string;
     email?: string;
@@ -124,7 +129,7 @@ router.put('/me', requireAuth, async (req: express.Request, res: express.Respons
 });
 
 router.put('/:id', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id;
+    const id = normalizeParam(req.params?.id);
     if (!id) {
         return res.status(400).json({ error: 'Missing ID' });
     }

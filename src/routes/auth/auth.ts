@@ -15,6 +15,11 @@ import { getUserByEmail, getUserById, getUserByUsername } from '../../services/u
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 const passwordPattern = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
 
 async function resetPassword(id: string, getFct: (field: string) => Promise<User>, res: express.Response) {
@@ -48,7 +53,7 @@ router.post('/auth/reset_password', async (req: express.Request, res: express.Re
 })
 
 router.get('/auth/:id/reset_password', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id
+    const id = normalizeParam(req.params?.id)
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });
     }
@@ -74,7 +79,7 @@ router.post('/auth/set_password', async (req: express.Request, res: express.Resp
             return res.status(400).json({ error: "Missing password" });
         }
         if (password.length < 8 || !passwordPattern.test(password)) {
-            return res.status(400).json({ error: "Invalid password"})
+            return res.status(400).json({ error: "Invalid password" })
         }
 
         const userId = await authService.setPassword(password, decoded, context);
@@ -109,13 +114,13 @@ router.post('/auth/register', async (req: express.Request, res: express.Response
         const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
 
         if (password && (password.length < 8 || !passwordPattern.test(password))) {
-            return res.status(400).json({ error: "Invalid password"})
+            return res.status(400).json({ error: "Invalid password" })
         }
         if (username.includes('@')) {
-            return res.status(400).json({ error: "Invalid username"})
+            return res.status(400).json({ error: "Invalid username" })
         }
         if (!emailPattern.test(email)) {
-            return res.status(400).json({ error: "Invalid email"})
+            return res.status(400).json({ error: "Invalid email" })
         }
 
         const userId = await authService.register(email, username, password);

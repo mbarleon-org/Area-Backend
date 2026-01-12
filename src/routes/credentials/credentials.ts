@@ -6,6 +6,11 @@ import { hasPerms, PERMISSIONS } from '../../services/permissions.js';
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function getPublicCredentialsHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
         const creds = await getPublicCredentials();
@@ -58,10 +63,11 @@ async function getCredentialHandler(req: express.Request, res: express.Response)
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        if (!req.params.id) {
+        const credentialId = normalizeParam(req.params?.id);
+        if (!credentialId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
-        const wf = await loadCredential(req.params.id);
+        const wf = await loadCredential(credentialId);
         if (!wf) {
             return res.status(404).json({ error: 'not found' });
         }
@@ -99,7 +105,7 @@ async function putCredentialHandler(req: express.Request, res: express.Response)
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const credentialId = req.params?.id;
+        const credentialId = normalizeParam(req.params?.id);
         if (!credentialId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
@@ -127,7 +133,7 @@ async function deleteCredentialHandler(req: express.Request, res: express.Respon
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const credentialId = req.params?.id;
+        const credentialId = normalizeParam(req.params?.id);
         if (!credentialId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
@@ -159,8 +165,8 @@ router.put('/credentials/:id', requireAuth, putCredentialHandler);
 router.delete('/credentials/:id', requireAuth, deleteCredentialHandler);
 router.post('/credentials/:id/users', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const userId = req.body?.userId;
+    const credentialId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.body?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -175,8 +181,8 @@ router.post('/credentials/:id/users', requireAuth, async (req: express.Request, 
 
 router.delete('/credentials/:id/users/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const userId = req.params?.userId;
+    const credentialId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.params?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -191,8 +197,8 @@ router.delete('/credentials/:id/users/:userId', requireAuth, async (req: express
 
 router.post('/credentials/:id/owners', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const userId = req.body?.userId;
+    const credentialId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.body?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -207,8 +213,8 @@ router.post('/credentials/:id/owners', requireAuth, async (req: express.Request,
 
 router.delete('/credentials/:id/owners/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const userId = req.params?.userId;
+    const credentialId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.params?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -223,8 +229,8 @@ router.delete('/credentials/:id/owners/:userId', requireAuth, async (req: expres
 
 router.post('/credentials/:id/user-teams', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const teamId = req.body?.teamId;
+    const credentialId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.body?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -239,8 +245,8 @@ router.post('/credentials/:id/user-teams', requireAuth, async (req: express.Requ
 
 router.delete('/credentials/:id/user-teams/:teamId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const teamId = req.params?.teamId;
+    const credentialId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.params?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -255,8 +261,8 @@ router.delete('/credentials/:id/user-teams/:teamId', requireAuth, async (req: ex
 
 router.post('/credentials/:id/owner-teams', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const teamId = req.body?.teamId;
+    const credentialId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.body?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -271,8 +277,8 @@ router.post('/credentials/:id/owner-teams', requireAuth, async (req: express.Req
 
 router.delete('/credentials/:id/owner-teams/:teamId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const credentialId = req.params?.id;
-    const teamId = req.params?.teamId;
+    const credentialId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.params?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!credentialId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
