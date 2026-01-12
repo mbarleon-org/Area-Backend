@@ -4,6 +4,11 @@ import { getUserById, updateUserById } from '../../../services/userStore';
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function saveProfilePicture(targetId: string, image: string, res: express.Response) {
     try {
         if (!image || typeof image !== 'string') {
@@ -44,7 +49,7 @@ router.put('/me/image', requireAuth, async (req: express.Request, res: express.R
 });
 
 router.put('/:id/image', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const targetId = req.params?.id;
+    const targetId = normalizeParam(req.params?.id);
     const image = req.body?.image;
     if (!targetId) {
         return res.status(400).json({ error: 'Missing ID' });

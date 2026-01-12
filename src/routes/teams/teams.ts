@@ -6,6 +6,11 @@ import { addOwnerToTeam, addUserToTeam, deleteTeamById, getTeamByID, getTeamByNa
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function postTeamHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
         if (!req.user?.sub) {
@@ -56,13 +61,14 @@ async function getTeamByIdHandler(req: express.Request, res: express.Response): 
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        if (!req.params.id) {
+        const teamId = normalizeParam(req.params?.id);
+        if (!teamId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
-        if (!(await isTeamMember(req.user!.sub, req.params.id)) && !hasPerms((await getUserById(req.user!.sub))?.permissions || 0, PERMISSIONS.ADMIN)) {
+        if (!(await isTeamMember(req.user!.sub, teamId)) && !hasPerms((await getUserById(req.user!.sub))?.permissions || 0, PERMISSIONS.ADMIN)) {
             return res.status(403).json({ error: "Forbidden" });
         }
-        const team = await getTeamByID(req.params.id);
+        const team = await getTeamByID(teamId);
         if (!team) {
             return res.status(404).json({ error: 'not found' });
         }
@@ -77,7 +83,7 @@ async function putTeamHandler(req: express.Request, res: express.Response): Prom
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const teamId = req.params?.id;
+        const teamId = normalizeParam(req.params?.id);
         if (!teamId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
@@ -113,7 +119,7 @@ async function deleteTeamHandler(req: express.Request, res: express.Response): P
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const teamId = req.params?.id;
+        const teamId = normalizeParam(req.params?.id);
         if (!teamId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
@@ -145,8 +151,8 @@ router.put('/teams/:id', requireAuth, putTeamHandler);
 router.delete('/teams/:id', requireAuth, deleteTeamHandler);
 router.post('/teams/:id/users', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const teamId = req.params?.id;
-    const userId = req.body?.userId;
+    const teamId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.body?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!teamId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -161,8 +167,8 @@ router.post('/teams/:id/users', requireAuth, async (req: express.Request, res: e
 
 router.delete('/teams/:id/users/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const teamId = req.params?.id;
-    const userId = req.params?.userId;
+    const teamId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.params?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!teamId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -177,8 +183,8 @@ router.delete('/teams/:id/users/:userId', requireAuth, async (req: express.Reque
 
 router.post('/teams/:id/owners', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const teamId = req.params?.id;
-    const userId = req.body?.userId;
+    const teamId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.body?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!teamId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -193,8 +199,8 @@ router.post('/teams/:id/owners', requireAuth, async (req: express.Request, res: 
 
 router.delete('/teams/:id/owners/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const teamId = req.params?.id;
-    const userId = req.params?.userId;
+    const teamId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.params?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!teamId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);

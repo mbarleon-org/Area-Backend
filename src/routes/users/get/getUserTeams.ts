@@ -4,6 +4,11 @@ import { requireAdmin, requireAuth } from '../../../middleware/user';
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function getTeams(id: string, res: express.Response) {
     try {
         const results = await getTeamsByUserID(id);
@@ -23,7 +28,7 @@ async function getTeams(id: string, res: express.Response) {
 }
 
 router.get('/:id/teams', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id
+    const id = normalizeParam(req.params?.id)
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });
     }

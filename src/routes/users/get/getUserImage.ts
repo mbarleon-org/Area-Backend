@@ -4,6 +4,11 @@ import { getUserById, getUserByUsername, getUserByEmail } from '../../../service
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function getUserImage(id: string, res: express.Response) {
     try {
         const user = await getUserById(id);
@@ -27,7 +32,7 @@ router.get('/me/image', requireAuth, async (req: express.Request, res: express.R
 });
 
 router.get('/:id/image', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id
+    const id = normalizeParam(req.params?.id)
 
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });
@@ -37,9 +42,9 @@ router.get('/:id/image', requireAuth, requireAdmin, async (req: express.Request,
 
 router.get('/email/:email/image', requireAuth, async (req: express.Request, res: express.Response) => {
     try {
-        const email = req.params?.email;
+        const email = normalizeParam(req.params?.email);
 
-        if (email === null) {
+        if (!email) {
             return res.status(400).json({ error: "Missing email" });
         }
         const user = await getUserByEmail(email);
@@ -54,9 +59,9 @@ router.get('/email/:email/image', requireAuth, async (req: express.Request, res:
 
 router.get('/username/:username/image', requireAuth, async (req: express.Request, res: express.Response) => {
     try {
-        const username = req.params?.username;
+        const username = normalizeParam(req.params?.username);
 
-        if (username === null) {
+        if (!username) {
             return res.status(400).json({ error: "Missing username" });
         }
         const user = await getUserByUsername(username);

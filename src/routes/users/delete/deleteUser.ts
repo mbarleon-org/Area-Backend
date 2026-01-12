@@ -4,6 +4,11 @@ import { deleteUserById } from '../../../services/userStore';
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function removeUser(userId: string, res: express.Response) {
     try {
         const deleted = await deleteUserById(userId);
@@ -25,7 +30,7 @@ router.delete('/me', requireAuth, async (req: express.Request, res: express.Resp
 });
 
 router.delete('/:id', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id;
+    const id = normalizeParam(req.params?.id);
     if (!id) {
         return res.status(400).json({ error: 'Missing ID' });
     }

@@ -7,6 +7,11 @@ import { hasPerms, PERMISSIONS } from '../../services/permissions.js';
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function getPublicWorkflowsHandler(req: express.Request, res: express.Response): Promise<any> {
     try {
         const wfs = await getPublicWorkflows();
@@ -59,7 +64,11 @@ async function getWorkflowHandler(req: express.Request, res: express.Response): 
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const wf = await loadWorkflow(req.params.id);
+        const workflowId = normalizeParam(req.params?.id);
+        if (!workflowId) {
+            return res.status(400).json({ error: 'Invalid request' });
+        }
+        const wf = await loadWorkflow(workflowId);
         if (!wf) {
             return res.status(404).json({ error: 'not found' });
         }
@@ -98,7 +107,7 @@ async function putWorkflowHandler(req: express.Request, res: express.Response): 
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const workflowId = req.params?.id;
+        const workflowId = normalizeParam(req.params?.id);
         if (!workflowId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
@@ -127,7 +136,7 @@ async function deleteWorkflowHandler(req: express.Request, res: express.Response
         if (!req.user?.sub) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const workflowId = req.params?.id;
+        const workflowId = normalizeParam(req.params?.id);
         if (!workflowId) {
             return res.status(400).json({ error: 'Invalid request' });
         }
@@ -160,7 +169,7 @@ async function deleteWorkflowHandler(req: express.Request, res: express.Response
  * @returns {Promise<express.Response>} updated workflow or 404
  */
 async function enableWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
-    const wId = req.params?.id;
+    const wId = normalizeParam(req.params?.id);
     const uId = req.user?.sub;
 
     if (!uId || !wId || !(await isWorkflowOwner(wId, uId))) {
@@ -182,7 +191,7 @@ async function enableWorkflowHandler(req: express.Request, res: express.Response
  * @returns {Promise<express.Response>} updated workflow or 404
  */
 async function disableWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
-    const wId = req.params?.id;
+    const wId = normalizeParam(req.params?.id);
     const uId = req.user?.sub;
 
     if (!uId || !wId || !(await isWorkflowOwner(wId, uId))) {
@@ -204,8 +213,8 @@ router.put('/workflows/:id', requireAuth, putWorkflowHandler);
 router.delete('/workflows/:id', requireAuth, deleteWorkflowHandler);
 router.post('/workflows/:id/users', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const userId = req.body?.userId;
+    const workflowId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.body?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -220,8 +229,8 @@ router.post('/workflows/:id/users', requireAuth, async (req: express.Request, re
 
 router.delete('/workflows/:id/users/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const userId = req.params?.userId;
+    const workflowId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.params?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -236,8 +245,8 @@ router.delete('/workflows/:id/users/:userId', requireAuth, async (req: express.R
 
 router.post('/workflows/:id/owners', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const userId = req.body?.userId;
+    const workflowId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.body?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -253,8 +262,8 @@ router.post('/workflows/:id/owners', requireAuth, async (req: express.Request, r
 
 router.delete('/workflows/:id/owners/:userId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const userId = req.params?.userId;
+    const workflowId = normalizeParam(req.params?.id);
+    const userId = normalizeParam(req.params?.userId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !userId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -270,8 +279,8 @@ router.delete('/workflows/:id/owners/:userId', requireAuth, async (req: express.
 
 router.post('/workflows/:id/user-teams', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const teamId = req.body?.teamId;
+    const workflowId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.body?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -287,8 +296,8 @@ router.post('/workflows/:id/user-teams', requireAuth, async (req: express.Reques
 
 router.delete('/workflows/:id/user-teams/:teamId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const teamId = req.params?.teamId;
+    const workflowId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.params?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -304,8 +313,8 @@ router.delete('/workflows/:id/user-teams/:teamId', requireAuth, async (req: expr
 
 router.post('/workflows/:id/owner-teams', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const teamId = req.body?.teamId;
+    const workflowId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.body?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);
@@ -321,8 +330,8 @@ router.post('/workflows/:id/owner-teams', requireAuth, async (req: express.Reque
 
 router.delete('/workflows/:id/owner-teams/:teamId', requireAuth, async (req: express.Request, res: express.Response) => {
     const actorId = req.user?.sub;
-    const workflowId = req.params?.id;
-    const teamId = req.params?.teamId;
+    const workflowId = normalizeParam(req.params?.id);
+    const teamId = normalizeParam(req.params?.teamId);
     if (!actorId) return res.status(401).json({ error: 'Unauthorized' });
     if (!workflowId || !teamId) return res.status(400).json({ error: 'Invalid request' });
     const actor = await getUserById(actorId);

@@ -4,6 +4,11 @@ import { getWorkflowsByUserId } from '../../../services/workflowStore';
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 async function getWorkflows(id: string, res: express.Response) {
     try {
         const results = await getWorkflowsByUserId(id);
@@ -25,7 +30,7 @@ async function getWorkflows(id: string, res: express.Response) {
 }
 
 router.get('/:id/workflows', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
-    const id = req.params?.id
+    const id = normalizeParam(req.params?.id)
     if (!id) {
         return res.status(400).json({ error: "Missing ID" });
     }

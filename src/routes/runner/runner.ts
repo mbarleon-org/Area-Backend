@@ -11,6 +11,11 @@ import { extractCredentialIds, loadWorkflow } from '../../services/workflowStore
 
 const router = express.Router();
 
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] : value;
+};
+
 /**
  * Middleware to authenticate a runner request.
  * It extracts the job id and token from headers (or query), verifies the job exists
@@ -49,7 +54,10 @@ async function authenticateRunner(req: express.Request, res: express.Response, n
  * @returns {Promise<express.Response>} JSON response containing workflow metadata or an error
  */
 async function getWorkflowHandler(req: express.Request, res: express.Response): Promise<any> {
-    const workflowId = req.params.id;
+    const workflowId = normalizeParam(req.params?.id);
+    if (!workflowId) {
+        return res.status(400).json({ error: 'missing_workflow_id' });
+    }
     const job = (req as any).runnerJob;
     if (job && job.workflowId !== workflowId) {
         return res.status(403).json({ error: 'job_workflow_mismatch' });
