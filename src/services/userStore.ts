@@ -98,6 +98,15 @@ export async function getUserById(id: string): Promise<any | null> {
 }
 
 /**
+ * List all users (admin scope).
+ */
+export async function listUsers(): Promise<User[]> {
+    const ds: any = getDataSource();
+    const repo: any = ds.getRepository(User);
+    return repo.find();
+}
+
+/**
  * Get user permissions
  */
 export async function getPermissions(userId: string): Promise<number | null> {
