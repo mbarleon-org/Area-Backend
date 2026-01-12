@@ -126,6 +126,134 @@ export async function setWorkflowEnabled(id: string, enabled: boolean): Promise<
     return saveWorkflow(existing);
 }
 
+export async function deleteWorkflow(id: string): Promise<boolean> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const result = await repo.delete({ id });
+    return Boolean(result?.affected && result.affected > 0);
+}
+
+function uniqueById<T extends { id: any }>(items: T[] = []): T[] {
+    const seen = new Set<string>();
+    const out: T[] = [];
+    for (const item of items) {
+        const key = String(item.id);
+        if (!seen.has(key)) {
+            seen.add(key);
+            out.push(item);
+        }
+    }
+    return out;
+}
+
+async function getWorkflowEntity(id: string) {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    return repo.findOne({ where: { id }, relations: ['owners', 'users', 'ownerTeams', 'userTeams'] });
+}
+
+export async function addUserToWorkflow(wId: string, uId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    const user = await getUserById(uId) as any;
+    if (!workflow || !user) {
+        return null;
+    }
+    workflow.users = uniqueById([...(workflow.users || []), user]);
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function addOwnerToWorkflow(wId: string, uId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    const user = await getUserById(uId) as any;
+    if (!workflow || !user) {
+        return null;
+    }
+    workflow.users = (workflow.users || []).filter(u => String(u.id) !== String(user.id));
+    workflow.owners = uniqueById([...(workflow.owners || []), user]);
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function removeUserFromWorkflow(wId: string, uId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    if (!workflow) {
+        return null;
+    }
+    workflow.users = (workflow.users || []).filter(u => String(u.id) !== String(uId));
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function removeOwnerFromWorkflow(wId: string, uId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    if (!workflow) {
+        return null;
+    }
+    workflow.owners = (workflow.owners || []).filter(u => String(u.id) !== String(uId));
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function addUserTeamToWorkflow(wId: string, tId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    const team = await getTeamByID(tId) as any;
+    if (!workflow || !team) {
+        return null;
+    }
+    workflow.userTeams = uniqueById([...(workflow.userTeams || []), team]);
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function addOwnerTeamToWorkflow(wId: string, tId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    const team = await getTeamByID(tId) as any;
+    if (!workflow || !team) {
+        return null;
+    }
+    workflow.userTeams = (workflow.userTeams || []).filter(t => String(t.id) !== String(team.id));
+    workflow.ownerTeams = uniqueById([...(workflow.ownerTeams || []), team]);
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function removeUserTeamFromWorkflow(wId: string, tId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    if (!workflow) {
+        return null;
+    }
+    workflow.userTeams = (workflow.userTeams || []).filter(t => String(t.id) !== String(tId));
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
+export async function removeOwnerTeamFromWorkflow(wId: string, tId: string): Promise<StoredWorkflow | null> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const workflow = await getWorkflowEntity(wId);
+    if (!workflow) {
+        return null;
+    }
+    workflow.ownerTeams = (workflow.ownerTeams || []).filter(t => String(t.id) !== String(tId));
+    const saved = await repo.save(workflow);
+    return mapEntityToWorkflow(saved);
+}
+
 /**
  * Extract credential ids referenced by workflow actions. Returns unique ids.
  *

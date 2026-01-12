@@ -107,6 +107,15 @@ components:
           format: byte
           nullable: true
           description: Base64 encoded PNG data, or null to clear the picture
+    UserImageUploadRequest:
+      type: object
+      required:
+        - image
+      properties:
+        image:
+          type: string
+          format: byte
+          description: Base64 encoded PNG data; data URI prefixes are accepted
     UserCreateRequest:
       type: object
       required:
@@ -228,6 +237,22 @@ components:
         name:
           type: string
           description: Team name
+    UserLinkRequest:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          description: User identifier
+    TeamLinkRequest:
+      type: object
+      required:
+        - teamId
+      properties:
+        teamId:
+          type: string
+          description: Team identifier
     Workflow:
       type: object
       properties:
@@ -244,6 +269,10 @@ components:
         definition:
           type: object
           description: Workflow definition payload
+        data:
+          type: object
+          additionalProperties: true
+          description: Arbitrary workflow metadata payload
       additionalProperties: true
     WorkflowListResponse:
       type: object
@@ -698,6 +727,338 @@ paths:
           description: Credential not found
         '500':
           description: Internal error
+    put:
+      tags:
+        - Credentials
+      summary: Update an existing credential definition
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialSaveRequest'
+      responses:
+        '200':
+          description: Credential updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request or payload
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not credential owner or admin
+        '404':
+          description: Credential not found
+        '500':
+          description: Internal error
+    delete:
+      tags:
+        - Credentials
+      summary: Delete a credential definition
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credential removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not credential owner or admin
+        '404':
+          description: Credential not found
+        '500':
+          description: Internal error
+  /credentials/{id}/users:
+    post:
+      tags:
+        - Credentials
+      summary: Grant a user access to a credential
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLinkRequest'
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential or user not found
+  /credentials/{id}/users/{userId}:
+    delete:
+      tags:
+        - Credentials
+      summary: Revoke a user's access to a credential
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential not found
+  /credentials/{id}/owners:
+    post:
+      tags:
+        - Credentials
+      summary: Promote or add a credential owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLinkRequest'
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential or user not found
+  /credentials/{id}/owners/{userId}:
+    delete:
+      tags:
+        - Credentials
+      summary: Remove an owner from a credential
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential not found
+  /credentials/{id}/user-teams:
+    post:
+      tags:
+        - Credentials
+      summary: Grant a team user-level access to a credential
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamLinkRequest'
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential or team not found
+  /credentials/{id}/user-teams/{teamId}:
+    delete:
+      tags:
+        - Credentials
+      summary: Revoke a team's user-level access to a credential
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential not found
+  /credentials/{id}/owner-teams:
+    post:
+      tags:
+        - Credentials
+      summary: Grant a team owner-level access to a credential (promotes if necessary)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamLinkRequest'
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential or team not found
+  /credentials/{id}/owner-teams/{teamId}:
+    delete:
+      tags:
+        - Credentials
+      summary: Revoke a team's owner-level access to a credential
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRecord'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Credential not found
   /workflows/public:
     get:
       tags:
@@ -809,6 +1170,338 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Update a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workflow'
+      responses:
+        '200':
+          description: Workflow updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid workflow payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow not found
+    delete:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Delete a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow not found
+  /workflows/{id}/users:
+    post:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Grant a user access to a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLinkRequest'
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow or user not found
+  /workflows/{id}/users/{userId}:
+    delete:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Revoke a user's access to a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow not found
+  /workflows/{id}/owners:
+    post:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Add or promote a workflow owner
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLinkRequest'
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow or user not found
+  /workflows/{id}/owners/{userId}:
+    delete:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Remove an owner from a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow not found
+  /workflows/{id}/user-teams:
+    post:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Grant a team user-level access to a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamLinkRequest'
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow or team not found
+  /workflows/{id}/user-teams/{teamId}:
+    delete:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Revoke a team's user-level access to a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow not found
+  /workflows/{id}/owner-teams:
+    post:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Grant a team owner-level access to a workflow (promotes if necessary)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamLinkRequest'
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow or team not found
+  /workflows/{id}/owner-teams/{teamId}:
+    delete:
+      tags:
+        - Workflows
+      security:
+        - bearerAuth: []
+      summary: Revoke a team's owner-level access to a workflow
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated workflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not workflow owner or admin
+        '404':
+          description: Workflow not found
   /workflows/{id}/enable:
     post:
       tags:
@@ -1157,6 +1850,206 @@ paths:
           description: Team not found
         '500':
           description: Internal error
+    put:
+      tags:
+        - Teams
+      summary: Update a team definition
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSaveRequest'
+      responses:
+        '200':
+          description: Team updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid request or payload
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a team owner or admin
+        '404':
+          description: Team not found
+        '409':
+          description: Team with this name already exists
+        '500':
+          description: Internal error
+    delete:
+      tags:
+        - Teams
+      summary: Delete a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not a team owner or admin
+        '404':
+          description: Team not found
+        '500':
+          description: Internal error
+  /teams/{id}/users:
+    post:
+      tags:
+        - Teams
+      summary: Add a user to a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLinkRequest'
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Team or user not found
+  /teams/{id}/users/{userId}:
+    delete:
+      tags:
+        - Teams
+      summary: Remove a user from a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Team not found
+  /teams/{id}/owners:
+    post:
+      tags:
+        - Teams
+      summary: Add or promote a team owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLinkRequest'
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Team or user not found
+  /teams/{id}/owners/{userId}:
+    delete:
+      tags:
+        - Teams
+      summary: Remove an owner from a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an owner or admin
+        '404':
+          description: Team not found
   /users:
     post:
       tags:
@@ -1254,6 +2147,65 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
         '404':
           description: User not found
+  /users/me/image:
+    get:
+      tags:
+        - Users
+      summary: Download the caller's profile picture
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Picture not set
+    put:
+      tags:
+        - Users
+      summary: Upload or replace the caller's profile picture
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserImageUploadRequest'
+      responses:
+        '200':
+          description: Picture updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid payload
+        '401':
+          description: Missing or invalid token
+        '404':
+          description: User not found
+    delete:
+      tags:
+        - Users
+      summary: Remove the caller's profile picture
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Picture removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Missing or invalid token
+        '404':
+          description: User not found
   /users/{id}:
     get:
       tags:
@@ -1332,6 +2284,91 @@ paths:
           description: Missing id
         '404':
           description: User not found
+  /users/{id}/image:
+    get:
+      tags:
+        - Users
+      summary: Download a user's profile picture (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing id
+        '404':
+          description: Picture or user not found
+    put:
+      tags:
+        - Users
+      summary: Upload or replace a user's profile picture (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserImageUploadRequest'
+      responses:
+        '200':
+          description: Picture updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Missing id or invalid payload
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an admin
+        '404':
+          description: User not found
+    delete:
+      tags:
+        - Users
+      summary: Remove a user's profile picture (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Picture removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Missing id
+        '401':
+          description: Missing or invalid token
+        '403':
+          description: Caller is not an admin
+        '404':
+          description: User not found
   /users/email/{email}:
     get:
       tags:
@@ -1381,48 +2418,6 @@ paths:
           description: Missing username
         '404':
           description: Not found
-  /users/me/image:
-    get:
-      tags:
-        - Users
-      summary: Download the caller's profile picture
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PNG image
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-        '404':
-          description: Picture not set
-  /users/{id}/image:
-    get:
-      tags:
-        - Users
-      summary: Download a user's profile picture (admin)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: PNG image
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-        '400':
-          description: Missing id
-        '404':
-          description: Picture or user not found
   /users/email/{email}/image:
     get:
       tags:
