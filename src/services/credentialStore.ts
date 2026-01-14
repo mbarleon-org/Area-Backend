@@ -181,25 +181,55 @@ export async function getCredentialsByTeamIds(ids: string[]) {
 }
 
 export async function getCredentialsByUserId(id: string) {
+    const repo = await getCredentialRepository();
     await initDataSource();
     const user = await getUserById(id);
     if (!user) {
         return [];
     }
 
-    const creds = user.credentials;
-    const ownCreds = user.ownedCredentials;
+    const relations = ['owners', 'users', 'ownerTeams', 'userTeams']
+
+    let creds: Credential[] = []
+
+    for (const c of Array.isArray(user.credentials) ? user.credentials : []) {
+        const entity = await repo.findOne({ where: { id: c.id }, relations });
+        if (entity) {
+            creds.push(entity);
+        }
+    }
+
+    let ownCreds: Credential[] = [];
+
+    for (const c of Array.isArray(user.ownedCredentials) ? user.ownedCredentials : []) {
+        const entity = await repo.findOne({ where: { id: c.id }, relations });
+        if (entity) {
+            ownCreds.push(entity);
+        }
+    }
 
     let teamCreds: Credential[] = [];
 
     const tIds = user.teams?.map(team => String(team.id));
     if (tIds) {
-        teamCreds = teamCreds.concat(await getCredentialsByTeamIds(tIds));
+        let tCreds = await getCredentialsByTeamIds(tIds);
+        for (const tc of Array.isArray(tCreds) ? tCreds : []) {
+            const entity = await repo.findOne({ where: { id: tc.id }, relations });
+            if (entity) {
+                teamCreds.push(entity);
+            }
+        }
     }
 
     const otIds = user.ownedTeams?.map(team => String(team.id));
     if (otIds) {
-        teamCreds = teamCreds.concat(await getCredentialsByTeamIds(otIds));
+        let otCreds = await getCredentialsByTeamIds(otIds);
+        for (const otc of Array.isArray(otCreds) ? otCreds : []) {
+            const entity = await repo.findOne({ where: { id: otc.id }, relations });
+            if (entity) {
+                teamCreds.push(entity);
+            }
+        }
     }
 
     return [...new Set([...(creds || []), ...(ownCreds || []), ...(teamCreds || [])])]

@@ -365,24 +365,53 @@ export async function getWorkflowsByTeamIds(ids: string[]) {
 }
 
 export async function getWorkflowsByUserId(id: string): Promise<WorkflowEntity[]> {
+    await initDataSource();
+    const repo = getDataSource().getRepository(WorkflowEntity);
+    const relations = ['owners', 'ownerTeams', 'users', 'userTeams'];
+
     const user = await getUserById(id);
     if (!user) {
         return [];
     }
 
-    const workflows = user.workflows;
-    const ownWorkflows = user.ownedWorkflows;
+    let workflows: WorkflowEntity[] = [];
+    for (const wf of (Array.isArray(user.workflows) ? user.workflows : [])) {
+        const entity = await repo.findOne({ where: { id: wf.id }, relations });
+        if (entity) {
+            workflows.push(entity);
+        }
+    }
+
+    let ownWorkflows: WorkflowEntity[] = [];
+    for (const owf of (Array.isArray(user.ownedWorkflows) ? user.ownedWorkflows : [])) {
+        const entity = await repo.findOne({ where: { id: owf.id }, relations });
+        if (entity) {
+            ownWorkflows.push(entity);
+        }
+    }
 
     let teamWorkflows: WorkflowEntity[] = [];
 
     const tIds = user.teams?.map(team => String(team.id));
     if (tIds) {
-        teamWorkflows = teamWorkflows.concat(await getWorkflowsByTeamIds(tIds));
+        const tWfs = await getWorkflowsByTeamIds(tIds);
+        for (const twf of (Array.isArray(tWfs) ? tWfs : [])) {
+            const entity = await repo.findOne({ where: { id: twf.id }, relations });
+            if (entity) {
+                teamWorkflows.push(entity);
+            }
+        }
     }
 
     const otIds = user.ownedTeams?.map(team => String(team.id));
     if (otIds) {
-        teamWorkflows = teamWorkflows.concat(await getWorkflowsByTeamIds(otIds));
+        const otWfs = await getWorkflowsByTeamIds(otIds);
+        for (const otwf of (Array.isArray(otWfs) ? otWfs : [])) {
+            const entity = await repo.findOne({ where: { id: otwf.id }, relations });
+            if (entity) {
+                teamWorkflows.push(entity);
+            }
+        }
     }
 
     return [...new Set([...(workflows || []), ...(ownWorkflows || []), ...(teamWorkflows || [])])]
