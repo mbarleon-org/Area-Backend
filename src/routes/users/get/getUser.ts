@@ -49,7 +49,7 @@ router.get('/email/:email', requireAuth, async (req: express.Request, res: expre
         if (user === null) {
             return res.status(404).json({ error: "Not found" });
         }
-        return res.status(200).json({ username: user.username, email: user.email });
+        return res.status(200).json({ id: user.id, username: user.username, email: user.email });
     } catch (err: any) {
         return res.status(500).json({ error: "Internal server error" });
     }
@@ -66,7 +66,7 @@ router.get('/username/:username', requireAuth, async (req: express.Request, res:
         if (user === null) {
             return res.status(404).json({ error: "Not found" });
         }
-        return res.status(200).json({ username: user.username, email: user.email });
+        return res.status(200).json({ id: user.id, username: user.username, email: user.email });
     } catch (err: any) {
         return res.status(500).json({ error: "Internal server error" });
     }
