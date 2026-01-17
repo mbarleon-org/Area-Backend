@@ -329,7 +329,7 @@ export async function registerWorkflows(options: any = {}): Promise<{ registered
             const registrars = buildRegistrars(wf, trig, usedPaths, duplicatePaths, registered, scheduledJobs);
 
             try {
-                const res = trigModule.register(wf, trig, actionsList, registry, options, registrars);
+                const res = trigModule.register(null, wf, trig, actionsList, registry, options, registrars);
                 if (res && res.job) {
                     registrars.scheduleJob(res);
                 }
