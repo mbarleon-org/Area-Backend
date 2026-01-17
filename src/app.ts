@@ -9,7 +9,13 @@ import { Singleton } from './singleton';
  */
 function createApp(): express.Express {
     const app = express();
-    app.use(express.json());
+
+    app.use(express.json({
+        verify: (req: any, _res, buf) => {
+            req.rawBody = buf && buf.length ? buf.toString('utf8') : '';
+        }
+    }));
+
     app.use(cors());
     return app;
 }

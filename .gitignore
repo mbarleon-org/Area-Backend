@@ -53,3 +53,4 @@ node_modules/
 /credentials/
 /workflows/
 /worker/
+send_to_dev.sh
